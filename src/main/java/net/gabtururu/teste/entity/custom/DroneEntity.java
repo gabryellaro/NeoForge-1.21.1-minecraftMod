@@ -23,6 +23,7 @@ public class DroneEntity extends Animal {
         super(entityType, level);
     }
 
+
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(0, new FloatGoal(this));
