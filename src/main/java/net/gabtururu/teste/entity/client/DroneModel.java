@@ -68,7 +68,6 @@ public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
         this.root().getAllParts().forEach(ModelPart::resetPose);
 
         this.animateWalk(DroneAnimations.FLY_DRONE, limbSwing, limbSwingAmount, 2f, 2.5f);
-        this.animate(entity.idleAnimationState, DroneAnimations.FLY_DRONE, ageInTicks, 1f);
     }
 
     @Override

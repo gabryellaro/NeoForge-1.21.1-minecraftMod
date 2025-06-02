@@ -1,77 +1,117 @@
 package net.gabtururu.teste.entity.custom;
 
-import net.gabtururu.teste.entity.ModEntities;
-import net.gabtururu.teste.item.ModItems;
+import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.AgeableMob;
-import net.minecraft.world.entity.AnimationState;
-import net.minecraft.world.entity.EntityType;
+import net.minecraft.server.level.TicketType;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.ai.goal.*;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.phys.Vec3;
 
-public class DroneEntity extends Animal {
-    public final AnimationState idleAnimationState = new AnimationState();
-    private int idleAnimationTimeout = 0;
+import javax.annotation.Nullable;
 
-    public DroneEntity(EntityType<? extends Animal> entityType, Level level) {
-        super(entityType, level);
+public class DroneEntity extends Mob {
+
+    private static final TicketType<BlockPos> DRONE_TICKET = TicketType.create("drone_ticket", BlockPos::compareTo);
+
+    private Vec3 targetPosition;
+    private boolean moving = false;
+    private BlockPos loadedChunkPos = null;
+
+    public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
+        super(type, level);
+        this.noPhysics = false;
     }
-
 
     @Override
     protected void registerGoals() {
-        this.goalSelector.addGoal(0, new FloatGoal(this));
-
-        this.goalSelector.addGoal(1, new PanicGoal(this, 2.0));
-        this.goalSelector.addGoal(2, new BreedGoal(this, 1.0));
-        this.goalSelector.addGoal(3, new TemptGoal(this, 1.25, stack -> stack.is(ModItems.BISMUTH), false));
-
-        this.goalSelector.addGoal(4, new FollowParentGoal(this, 1.25));
-
-        this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0));
-        this.goalSelector.addGoal(6, new LookAtPlayerGoal(this, Player.class, 6.0F));
-        this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
-    }
-
-    public static AttributeSupplier.Builder createAttributes() {
-        return Animal.createLivingAttributes()
-                .add(Attributes.MAX_HEALTH, 10d)
-                .add(Attributes.MOVEMENT_SPEED, 0.25D)
-                .add(Attributes.FOLLOW_RANGE, 24D);
-    }
-
-    @Override
-    public boolean isFood(ItemStack stack) {
-        return stack.is(ModItems.BISMUTH.get());
-    }
-
-    @Nullable
-    @Override
-    public AgeableMob getBreedOffspring(ServerLevel level, AgeableMob otherParent) {
-        return ModEntities.DRONE.get().create(level);
-    }
-
-    private void setupAnimationStates() {
-        if(this.idleAnimationTimeout <= 0) {
-            this.idleAnimationTimeout = 80;
-            this.idleAnimationState.start(this.tickCount);
-        } else {
-            --this.idleAnimationTimeout;
-        }
+        this.goalSelector.addGoal(1, new FloatGoal(this));
     }
 
     @Override
     public void tick() {
         super.tick();
 
-        if(this.level().isClientSide()) {
-            this.setupAnimationStates();
+        if (level().isClientSide) return;
+
+        if (moving && targetPosition != null) {
+            Vec3 direction = targetPosition.subtract(position());
+            double distance = direction.length();
+
+            if (distance < 1.0) {
+                stopMovement();
+                return;
+            }
+
+            Vec3 directionNormalized = direction.normalize();
+            directionNormalized = new Vec3(directionNormalized.x, directionNormalized.y * 0.2, directionNormalized.z);
+            Vec3 velocity = directionNormalized.scale(0.3);
+            setDeltaMovement(velocity);
+            moveSelf();
+        } else {
+            // Hover a 1 bloco do chão
+            double desiredHeight = 1.0;
+            double currentY = getY();
+            BlockPos groundPos = blockPosition().below();
+            double groundY = groundPos.getY() + desiredHeight;
+            double diff = groundY - currentY;
+            double verticalSpeed = Math.max(Math.min(diff * 0.1, 0.05), -0.05);
+            setDeltaMovement(new Vec3(0, verticalSpeed, 0));
+            moveSelf();
         }
+    }
+
+    private void moveSelf() {
+        move(MoverType.SELF, getDeltaMovement());
+    }
+
+    public void moveToPosition(Vec3 target) {
+        this.targetPosition = target;
+        this.moving = true;
+
+        if (!level().isClientSide && level() instanceof ServerLevel serverLevel) {
+            BlockPos current = blockPosition();
+            BlockPos destination = new BlockPos((int) target.x, (int) target.y, (int) target.z);
+            keepChunkLoaded(serverLevel, current);
+            keepChunkLoaded(serverLevel, destination);
+        }
+    }
+
+    private void keepChunkLoaded(ServerLevel level, BlockPos pos) {
+        ChunkPos chunk = new ChunkPos(pos);
+        level.getChunkSource().addRegionTicket(DRONE_TICKET, chunk, 1, pos);
+        loadedChunkPos = pos;
+    }
+
+    private void stopMovement() {
+        setDeltaMovement(Vec3.ZERO);
+        moving = false;
+        targetPosition = null;
+
+        if (!level().isClientSide && level() instanceof ServerLevel serverLevel && loadedChunkPos != null) {
+            ChunkPos chunk = new ChunkPos(loadedChunkPos);
+            serverLevel.getChunkSource().removeRegionTicket(DRONE_TICKET, chunk, 1, loadedChunkPos);
+            loadedChunkPos = null;
+        }
+    }
+
+    public static AttributeSupplier.Builder createAttributes() {
+        return Mob.createMobAttributes()
+                .add(Attributes.MAX_HEALTH, 20.0)
+                .add(Attributes.MOVEMENT_SPEED, 0.3)
+                .add(Attributes.FLYING_SPEED, 0.5);
+    }
+
+    @Override
+    public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData spawnData) {
+        // Levanta o drone 1 bloco ao spawnar
+        setPos(getX(), getY() + 1.0, getZ());
+        return super.finalizeSpawn(level, difficulty, reason, spawnData);
     }
 }

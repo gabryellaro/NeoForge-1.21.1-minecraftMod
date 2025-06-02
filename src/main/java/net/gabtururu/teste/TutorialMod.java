@@ -1,10 +1,14 @@
 package net.gabtururu.teste;
 
+import com.mojang.brigadier.CommandDispatcher;
 import net.gabtururu.teste.block.ModBlocks;
+import net.gabtururu.teste.command.DroneMoveCommand;
 import net.gabtururu.teste.entity.ModEntities;
 import net.gabtururu.teste.entity.client.DroneRenderer;
 import net.gabtururu.teste.item.ModItems;
 import net.minecraft.client.renderer.entity.EntityRenderers;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.CreativeModeTabs;
 import org.slf4j.Logger;
 
@@ -75,6 +79,10 @@ public class TutorialMod {
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event)
     {
+        MinecraftServer server = event.getServer();
+        CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
+
+        DroneMoveCommand.register(dispatcher);
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
