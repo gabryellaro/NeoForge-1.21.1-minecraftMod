@@ -1,7 +1,6 @@
 package net.gabtururu.teste.entity.custom;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.DifficultyInstance;
@@ -12,6 +11,7 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
@@ -27,6 +27,7 @@ public class DroneEntity extends Mob {
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
         this.noPhysics = false;
+        this.setNoGravity(true);
     }
 
     @Override
@@ -49,13 +50,26 @@ public class DroneEntity extends Mob {
                 return;
             }
 
-            Vec3 directionNormalized = direction.normalize();
-            directionNormalized = new Vec3(directionNormalized.x, directionNormalized.y * 0.2, directionNormalized.z);
-            Vec3 velocity = directionNormalized.scale(0.3);
+            Vec3 forward = direction.normalize().scale(0.5);
+            Vec3 ahead = position().add(forward);
+            BlockPos checkPos = new BlockPos((int) Math.floor(ahead.x), (int) Math.floor(ahead.y), (int) Math.floor(ahead.z));
+            BlockState blockAhead = level().getBlockState(checkPos);
+            boolean isBlocked = !blockAhead.isAir();
+
+            double verticalDiff = targetPosition.y - getY();
+            double verticalSpeed = Math.max(Math.min(verticalDiff * 0.05, 0.15), -0.15); // subida suave
+
+            if (isBlocked) {
+                verticalSpeed = 0.2; // desvia subindo se estiver bloqueado
+            }
+
+            Vec3 horizontalDir = new Vec3(direction.x, 0, direction.z).normalize().scale(0.3);
+            Vec3 velocity = new Vec3(horizontalDir.x, verticalSpeed, horizontalDir.z);
+
             setDeltaMovement(velocity);
             moveSelf();
         } else {
-            // Hover a 1 bloco do chão
+            // Hover fixo a 1 bloco do chão
             double desiredHeight = 1.0;
             double currentY = getY();
             BlockPos groundPos = blockPosition().below();
@@ -104,13 +118,12 @@ public class DroneEntity extends Mob {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0)
-                .add(Attributes.MOVEMENT_SPEED, 0.3)
-                .add(Attributes.FLYING_SPEED, 0.5);
+                .add(Attributes.MOVEMENT_SPEED, 1.0)
+                .add(Attributes.FLYING_SPEED, 1.0);
     }
 
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData spawnData) {
-        // Levanta o drone 1 bloco ao spawnar
         setPos(getX(), getY() + 1.0, getZ());
         return super.finalizeSpawn(level, difficulty, reason, spawnData);
     }
