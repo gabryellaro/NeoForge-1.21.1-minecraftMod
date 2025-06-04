@@ -11,15 +11,16 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.FloatGoal;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.entity.player.Player;
 
 import javax.annotation.Nullable;
+import java.util.Optional;
 
 public class DroneEntity extends Mob {
 
@@ -29,7 +30,10 @@ public class DroneEntity extends Mob {
     private boolean moving = false;
     private BlockPos loadedChunkPos = null;
 
-    private int batteryLevel = 1200; // máx. 1200 ticks (1 minuto)
+    private boolean returningToRecharge = false;
+    private BlockPos rechargeStation = null;
+
+    private int batteryLevel = 1200;
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -50,10 +54,20 @@ public class DroneEntity extends Mob {
 
         int oldBatteryLevel = batteryLevel;
 
-        // Se estiver se movendo, gasta bateria
+        if (!returningToRecharge && batteryLevel < 200) {
+            Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition(), 30);
+            if (nearestRecharge.isPresent()) {
+                targetPosition = Vec3.atCenterOf(nearestRecharge.get());
+                returningToRecharge = true;
+                rechargeStation = nearestRecharge.get();
+                moving = true;
+            }
+        }
+
         if (moving && targetPosition != null) {
             if (batteryLevel <= 0) {
                 stopMovement();
+                this.setNoGravity(false);
                 return;
             }
 
@@ -63,6 +77,10 @@ public class DroneEntity extends Mob {
             double distance = direction.length();
 
             if (distance < 1.0) {
+                if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
+                    rechargeBattery(1200);
+                    returningToRecharge = false;
+                }
                 stopMovement();
                 return;
             }
@@ -96,18 +114,24 @@ public class DroneEntity extends Mob {
             moveSelf();
         }
 
-        // Verifica recarga em bloco de redstone
         BlockPos under = blockPosition().below();
         if (level().getBlockState(under).is(Blocks.REDSTONE_BLOCK)) {
             rechargeBattery(5);
         }
 
-        // Atualiza nome da bateria a cada segundo
+        if (batteryLevel <= 0) {
+            if (onGround()) {
+                setDeltaMovement(Vec3.ZERO);
+            } else {
+                Vec3 motion = getDeltaMovement();
+                setDeltaMovement(new Vec3(motion.x, Math.max(motion.y, -0.08), motion.z));
+            }
+        }
+
         if (tickCount % 20 == 0) {
             updateBatteryName();
         }
 
-        // Envia mensagem no chat de 200 em 200 ticks, e aviso de bateria baixa em 200 ou menos
         if (batteryLevel != oldBatteryLevel) {
             if (batteryLevel <= 200) {
                 sendMessageToNearestPlayer(Component.literal("§cBateria baixa! Apenas " + batteryLevel + " ticks restantes."));
@@ -115,6 +139,20 @@ public class DroneEntity extends Mob {
                 sendMessageToNearestPlayer(Component.literal("Drone bateria: " + batteryLevel + " ticks restantes."));
             }
         }
+    }
+
+    private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin, int radius) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dz = -radius; dz <= radius; dz++) {
+                    BlockPos check = origin.offset(dx, dy, dz);
+                    if (level().getBlockState(check).getBlock() == Blocks.REDSTONE_BLOCK) {
+                        return Optional.of(check);
+                    }
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     private void sendMessageToNearestPlayer(Component message) {
@@ -131,6 +169,7 @@ public class DroneEntity extends Mob {
     public void moveToPosition(Vec3 target) {
         this.targetPosition = target;
         this.moving = true;
+        this.returningToRecharge = false;
 
         if (!level().isClientSide && level() instanceof ServerLevel serverLevel) {
             BlockPos current = blockPosition();
