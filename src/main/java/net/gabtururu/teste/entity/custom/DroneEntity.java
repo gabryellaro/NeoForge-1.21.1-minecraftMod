@@ -120,13 +120,22 @@ public class DroneEntity extends Mob {
         }
 
         if (batteryLevel <= 0) {
-            if (onGround()) {
-                setDeltaMovement(Vec3.ZERO);
+            BlockPos belowPos = this.blockPosition().below();
+            BlockState blockBelow = level().getBlockState(belowPos);
+            boolean isWater = blockBelow.getFluidState().isSource();
+
+            if (!this.onGround() && !isWater) {
+                // força movimento descendente manual mesmo com noGravity = true
+                Vec3 motion = this.getDeltaMovement();
+                this.setDeltaMovement(new Vec3(motion.x, Math.max(motion.y - 0.05, -0.15), motion.z));
+                this.move(MoverType.SELF, this.getDeltaMovement());
             } else {
-                Vec3 motion = getDeltaMovement();
-                setDeltaMovement(new Vec3(motion.x, Math.max(motion.y, -0.08), motion.z));
+                // parou no chão ou em cima da água
+                this.setDeltaMovement(Vec3.ZERO);
             }
+
         }
+
 
         if (tickCount % 20 == 0) {
             updateBatteryName();
