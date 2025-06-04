@@ -1,9 +1,12 @@
 package net.gabtururu.teste.entity.custom;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -11,8 +14,10 @@ import net.minecraft.world.entity.ai.goal.FloatGoal;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ServerLevelAccessor;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.entity.player.Player;
 
 import javax.annotation.Nullable;
 
@@ -23,6 +28,8 @@ public class DroneEntity extends Mob {
     private Vec3 targetPosition;
     private boolean moving = false;
     private BlockPos loadedChunkPos = null;
+
+    private int batteryLevel = 1200; // máx. 1200 ticks (1 minuto)
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -41,7 +48,17 @@ public class DroneEntity extends Mob {
 
         if (level().isClientSide) return;
 
+        int oldBatteryLevel = batteryLevel;
+
+        // Se estiver se movendo, gasta bateria
         if (moving && targetPosition != null) {
+            if (batteryLevel <= 0) {
+                stopMovement();
+                return;
+            }
+
+            batteryLevel--;
+
             Vec3 direction = targetPosition.subtract(position());
             double distance = direction.length();
 
@@ -57,10 +74,10 @@ public class DroneEntity extends Mob {
             boolean isBlocked = !blockAhead.isAir();
 
             double verticalDiff = targetPosition.y - getY();
-            double verticalSpeed = Math.max(Math.min(verticalDiff * 0.05, 0.15), -0.15); // subida suave
+            double verticalSpeed = Math.max(Math.min(verticalDiff * 0.05, 0.15), -0.15);
 
             if (isBlocked) {
-                verticalSpeed = 0.2; // desvia subindo se estiver bloqueado
+                verticalSpeed = 0.2;
             }
 
             Vec3 horizontalDir = new Vec3(direction.x, 0, direction.z).normalize().scale(0.3);
@@ -69,7 +86,6 @@ public class DroneEntity extends Mob {
             setDeltaMovement(velocity);
             moveSelf();
         } else {
-            // Hover fixo a 1 bloco do chão
             double desiredHeight = 1.0;
             double currentY = getY();
             BlockPos groundPos = blockPosition().below();
@@ -78,6 +94,33 @@ public class DroneEntity extends Mob {
             double verticalSpeed = Math.max(Math.min(diff * 0.1, 0.05), -0.05);
             setDeltaMovement(new Vec3(0, verticalSpeed, 0));
             moveSelf();
+        }
+
+        // Verifica recarga em bloco de redstone
+        BlockPos under = blockPosition().below();
+        if (level().getBlockState(under).is(Blocks.REDSTONE_BLOCK)) {
+            rechargeBattery(5);
+        }
+
+        // Atualiza nome da bateria a cada segundo
+        if (tickCount % 20 == 0) {
+            updateBatteryName();
+        }
+
+        // Envia mensagem no chat de 200 em 200 ticks, e aviso de bateria baixa em 200 ou menos
+        if (batteryLevel != oldBatteryLevel) {
+            if (batteryLevel <= 200) {
+                sendMessageToNearestPlayer(Component.literal("§cBateria baixa! Apenas " + batteryLevel + " ticks restantes."));
+            } else if (batteryLevel % 200 == 0) {
+                sendMessageToNearestPlayer(Component.literal("Drone bateria: " + batteryLevel + " ticks restantes."));
+            }
+        }
+    }
+
+    private void sendMessageToNearestPlayer(Component message) {
+        Player nearestPlayer = level().getNearestPlayer(blockPosition().getX(), blockPosition().getY(), blockPosition().getZ(), 50, false);
+        if (nearestPlayer instanceof ServerPlayer serverPlayer) {
+            serverPlayer.sendSystemMessage(message);
         }
     }
 
@@ -113,6 +156,31 @@ public class DroneEntity extends Mob {
             serverLevel.getChunkSource().removeRegionTicket(DRONE_TICKET, chunk, 1, loadedChunkPos);
             loadedChunkPos = null;
         }
+    }
+
+    private void rechargeBattery(int amount) {
+        batteryLevel = Math.min(1200, batteryLevel + amount);
+    }
+
+    private void updateBatteryName() {
+        String bar = getBatteryBar();
+        this.setCustomNameVisible(true);
+        this.setCustomName(Component.literal("Bateria: " + bar));
+    }
+
+    private String getBatteryBar() {
+        int totalBars = 10;
+        int filledBars = (int) ((batteryLevel / 1200.0) * totalBars);
+        StringBuilder bar = new StringBuilder();
+        for (int i = 0; i < totalBars; i++) {
+            bar.append(i < filledBars ? "█" : "░");
+        }
+        return bar.toString();
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        return false;
     }
 
     public static AttributeSupplier.Builder createAttributes() {
