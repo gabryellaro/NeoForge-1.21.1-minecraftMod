@@ -18,6 +18,7 @@ public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
     private final ModelPart Body;
     private final ModelPart helix;
 
+
     public DroneModel(ModelPart root) {
         this.Body = root.getChild("Body");
         this.helix = root.getChild("helix");
@@ -73,6 +74,8 @@ public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
     @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color) {
         Body.render(poseStack, vertexConsumer, packedLight, packedOverlay, color);
+        helix.render(poseStack, vertexConsumer, packedLight, packedOverlay, color);
+
     }
 
     @Override
