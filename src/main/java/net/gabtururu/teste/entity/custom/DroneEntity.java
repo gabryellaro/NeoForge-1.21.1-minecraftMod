@@ -27,7 +27,7 @@ public class DroneEntity extends Mob {
     private static final TicketType<BlockPos> DRONE_TICKET = TicketType.create("drone_ticket", BlockPos::compareTo);
 
     private static final int MAX_BATTERY = 300;
-    private static final double LOW_BATTERY_THRESHOLD = 0.10; // 10%
+    private static final double LOW_BATTERY_THRESHOLD = 0.20; // 20%
 
     private Vec3 targetPosition;
     private boolean moving = false;
@@ -70,7 +70,7 @@ public class DroneEntity extends Mob {
         }
 
         if (moving && targetPosition != null) {
-            if (batteryLevel <= 10) {
+            if (batteryLevel <= 0) {
                 stopMovement();
                 this.setNoGravity(false);
                 return;
