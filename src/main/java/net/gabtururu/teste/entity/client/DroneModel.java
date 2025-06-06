@@ -17,9 +17,10 @@ public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
             new ModelLayerLocation(ResourceLocation.fromNamespaceAndPath(TutorialMod.MOD_ID, "drone"), "main");
     private final ModelPart Body;
     private final ModelPart helix;
-
+    private final ModelPart root;
 
     public DroneModel(ModelPart root) {
+        this.root = root;
         this.Body = root.getChild("Body");
         this.helix = root.getChild("helix");
     }
@@ -68,8 +69,9 @@ public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
     public void setupAnim(DroneEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
         this.root().getAllParts().forEach(ModelPart::resetPose);
 
-        this.animateWalk(DroneAnimations.FLY_DRONE, limbSwing, limbSwingAmount, 2f, 2.5f);
-    }
+        entity.flyAnimationState.ifStarted(state -> {
+            this.animate(entity.flyAnimationState, DroneAnimations.FLY_DRONE, ageInTicks);
+        });    }
 
     @Override
     public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, int color) {
@@ -79,7 +81,7 @@ public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
     }
 
     @Override
-    public ModelPart root(){
-        return Body;
+    public ModelPart root() {
+        return root;
     }
 }

@@ -23,6 +23,8 @@ import javax.annotation.Nullable;
 import java.util.Optional;
 
 public class DroneEntity extends Mob {
+    public final AnimationState flyAnimationState = new AnimationState();
+    private int flyAnimationTimeout = 0;
 
     private static final TicketType<BlockPos> DRONE_TICKET = TicketType.create("drone_ticket", BlockPos::compareTo);
 
@@ -42,7 +44,6 @@ public class DroneEntity extends Mob {
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
-        this.noPhysics = false;
         this.setNoGravity(true);
     }
 
@@ -51,11 +52,24 @@ public class DroneEntity extends Mob {
         this.goalSelector.addGoal(1, new FloatGoal(this));
     }
 
+    private void setupAnimationStates() {
+        if (this.flyAnimationTimeout <= 0) {
+            this.flyAnimationTimeout = 4; // repete rapidamente para parecer contínua
+            this.flyAnimationState.start(this.tickCount);
+        } else {
+            --this.flyAnimationTimeout;
+        }
+
+    }
+
     @Override
     public void tick() {
         super.tick();
 
-        if (level().isClientSide) return;
+        if (this.level().isClientSide()) {
+            this.setupAnimationStates();
+            return; // Só anima no cliente
+        }
 
         double batteryPercentage = batteryLevel / (double) MAX_BATTERY;
 
