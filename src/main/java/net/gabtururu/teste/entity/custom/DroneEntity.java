@@ -26,14 +26,19 @@ public class DroneEntity extends Mob {
 
     private static final TicketType<BlockPos> DRONE_TICKET = TicketType.create("drone_ticket", BlockPos::compareTo);
 
+    private static final int MAX_BATTERY = 300;
+    private static final double LOW_BATTERY_THRESHOLD = 0.10; // 10%
+
     private Vec3 targetPosition;
     private boolean moving = false;
     private BlockPos loadedChunkPos = null;
+    private int lastBatteryPercentWarned = -1;
+
 
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
 
-    private int batteryLevel = 1200;
+    private int batteryLevel = MAX_BATTERY;
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -52,9 +57,9 @@ public class DroneEntity extends Mob {
 
         if (level().isClientSide) return;
 
-        int oldBatteryLevel = batteryLevel;
+        double batteryPercentage = batteryLevel / (double) MAX_BATTERY;
 
-        if (!returningToRecharge && batteryLevel < 200) {
+        if (!returningToRecharge && batteryPercentage < LOW_BATTERY_THRESHOLD) {
             Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition(), 30);
             if (nearestRecharge.isPresent()) {
                 targetPosition = Vec3.atCenterOf(nearestRecharge.get());
@@ -65,7 +70,7 @@ public class DroneEntity extends Mob {
         }
 
         if (moving && targetPosition != null) {
-            if (batteryLevel <= 0) {
+            if (batteryLevel <= 10) {
                 stopMovement();
                 this.setNoGravity(false);
                 return;
@@ -73,19 +78,44 @@ public class DroneEntity extends Mob {
 
             batteryLevel--;
 
-            Vec3 direction = targetPosition.subtract(position());
-            double distance = direction.length();
+            Vec3 directionToTarget = targetPosition.subtract(position());
+            double distance = directionToTarget.length();
 
             if (distance < 1.0) {
                 if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
-                    rechargeBattery(1200);
+                    rechargeBattery(MAX_BATTERY);
                     returningToRecharge = false;
                 }
                 stopMovement();
                 return;
             }
 
-            Vec3 forward = direction.normalize().scale(0.5);
+            Vec3 waterInfluence = Vec3.ZERO;
+            int waterCount = 0;
+
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (dx == 0 && dz == 0) continue;
+
+                    BlockPos posBelow = blockPosition().offset(dx, -1, dz);
+                    BlockState state = level().getBlockState(posBelow);
+
+                    if (state.getFluidState().isSource()) {
+                        waterInfluence = waterInfluence.add(new Vec3(dx, 0, dz));
+                        waterCount++;
+                    }
+                }
+            }
+
+            Vec3 finalDirection;
+            if (waterCount > 0) {
+                Vec3 avgWaterDir = waterInfluence.scale(1.0 / waterCount).normalize();
+                finalDirection = directionToTarget.normalize().scale(0.6).add(avgWaterDir.scale(0.4)).normalize();
+            } else {
+                finalDirection = directionToTarget.normalize();
+            }
+
+            Vec3 forward = finalDirection.scale(0.5);
             Vec3 ahead = position().add(forward);
             BlockPos checkPos = new BlockPos((int) Math.floor(ahead.x), (int) Math.floor(ahead.y), (int) Math.floor(ahead.z));
             BlockState blockAhead = level().getBlockState(checkPos);
@@ -98,7 +128,7 @@ public class DroneEntity extends Mob {
                 verticalSpeed = 0.2;
             }
 
-            Vec3 horizontalDir = new Vec3(direction.x, 0, direction.z).normalize().scale(0.3);
+            Vec3 horizontalDir = new Vec3(finalDirection.x, 0, finalDirection.z).normalize().scale(0.3);
             Vec3 velocity = new Vec3(horizontalDir.x, verticalSpeed, horizontalDir.z);
 
             setDeltaMovement(velocity);
@@ -119,35 +149,33 @@ public class DroneEntity extends Mob {
             rechargeBattery(5);
         }
 
-        if (batteryLevel <= 0) {
+        if (batteryLevel <= 10 && !findNearestRedstoneBlock(blockPosition(), 30).isPresent()) {
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
             boolean isWater = blockBelow.getFluidState().isSource();
 
             if (!this.onGround() && !isWater) {
-                // força movimento descendente manual mesmo com noGravity = true
                 Vec3 motion = this.getDeltaMovement();
                 this.setDeltaMovement(new Vec3(motion.x, Math.max(motion.y - 0.05, -0.15), motion.z));
                 this.move(MoverType.SELF, this.getDeltaMovement());
             } else {
-                // parou no chão ou em cima da água
                 this.setDeltaMovement(Vec3.ZERO);
             }
-
         }
-
 
         if (tickCount % 20 == 0) {
             updateBatteryName();
         }
 
-        if (batteryLevel != oldBatteryLevel) {
-            if (batteryLevel <= 200) {
-                sendMessageToNearestPlayer(Component.literal("§cBateria baixa! Apenas " + batteryLevel + " ticks restantes."));
-            } else if (batteryLevel % 200 == 0) {
-                sendMessageToNearestPlayer(Component.literal("Drone bateria: " + batteryLevel + " ticks restantes."));
-            }
+        int batteryPercent = (int) ((batteryLevel / (double) MAX_BATTERY) * 100);
+        if (batteryPercent <= 20 && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
+            sendMessageToNearestPlayer(Component.literal("§cBateria baixa! " + batteryPercent + "% restante."));
+            lastBatteryPercentWarned = batteryPercent;
+        } else if (batteryPercent > 20 && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
+            sendMessageToNearestPlayer(Component.literal("Drone bateria: " + batteryPercent + "%."));
+            lastBatteryPercentWarned = batteryPercent;
         }
+
     }
 
     private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin, int radius) {
@@ -207,23 +235,26 @@ public class DroneEntity extends Mob {
     }
 
     private void rechargeBattery(int amount) {
-        batteryLevel = Math.min(1200, batteryLevel + amount);
+        batteryLevel = Math.min(MAX_BATTERY, batteryLevel + amount);
+    }
+
+    private String getBatteryBar(int percent) {
+        int totalBars = 10;
+        int filledBars = (int) ((percent / 100.0) * totalBars);
+
+        StringBuilder bar = new StringBuilder("[");
+        for (int i = 0; i < totalBars; i++) {
+            bar.append(i < filledBars ? "█" : " ");
+        }
+        bar.append("]");
+        return bar.toString();
     }
 
     private void updateBatteryName() {
-        String bar = getBatteryBar();
+        int percent = (int) ((batteryLevel / (double) MAX_BATTERY) * 100);
+        String bar = getBatteryBar(percent);
         this.setCustomNameVisible(true);
-        this.setCustomName(Component.literal("Bateria: " + bar));
-    }
-
-    private String getBatteryBar() {
-        int totalBars = 10;
-        int filledBars = (int) ((batteryLevel / 1200.0) * totalBars);
-        StringBuilder bar = new StringBuilder();
-        for (int i = 0; i < totalBars; i++) {
-            bar.append(i < filledBars ? "█" : "░");
-        }
-        return bar.toString();
+        this.setCustomName(Component.literal("Bateria: " + bar + " " + percent + "%"));
     }
 
     @Override
