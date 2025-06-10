@@ -23,7 +23,7 @@ public class DroneRenderer extends MobRenderer<DroneEntity, DroneModel<DroneEnti
         if(entity.isBaby()) {
             poseStack.scale(0.45f, 0.45f, 0.45f);
         } else {
-            poseStack.scale(3f, 3f, 3f);
+            poseStack.scale(2f, 2f, 2f);
         }
 
         super.render(entity, entityYaw, partialTicks, poseStack, buffer, packedLight);

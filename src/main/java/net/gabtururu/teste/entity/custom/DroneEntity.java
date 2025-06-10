@@ -36,7 +36,6 @@ public class DroneEntity extends Mob {
     private BlockPos loadedChunkPos = null;
     private int lastBatteryPercentWarned = -1;
 
-
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
 
@@ -54,12 +53,11 @@ public class DroneEntity extends Mob {
 
     private void setupAnimationStates() {
         if (this.flyAnimationTimeout <= 0) {
-            this.flyAnimationTimeout = 4; // repete rapidamente para parecer contínua
+            this.flyAnimationTimeout = 4;
             this.flyAnimationState.start(this.tickCount);
         } else {
             --this.flyAnimationTimeout;
         }
-
     }
 
     @Override
@@ -74,7 +72,7 @@ public class DroneEntity extends Mob {
         double batteryPercentage = batteryLevel / (double) MAX_BATTERY;
 
         if (!returningToRecharge && batteryPercentage < LOW_BATTERY_THRESHOLD) {
-            Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition(), 30);
+            Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition());
             if (nearestRecharge.isPresent()) {
                 targetPosition = Vec3.atCenterOf(nearestRecharge.get());
                 returningToRecharge = true;
@@ -163,7 +161,8 @@ public class DroneEntity extends Mob {
             rechargeBattery(5);
         }
 
-        if (batteryLevel <= 10 && !findNearestRedstoneBlock(blockPosition(), 30).isPresent()) {
+        if (batteryLevel <= 10 && !findNearestRedstoneBlock(blockPosition()).isPresent()) {
+            stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
             boolean isWater = blockBelow.getFluidState().isSource();
@@ -171,7 +170,6 @@ public class DroneEntity extends Mob {
             if (!this.onGround() && !isWater) {
                 Vec3 motion = this.getDeltaMovement();
                 this.setDeltaMovement(new Vec3(motion.x, Math.max(motion.y - 0.05, -0.15), motion.z));
-                this.move(MoverType.SELF, this.getDeltaMovement());
             } else {
                 this.setDeltaMovement(Vec3.ZERO);
             }
@@ -192,13 +190,15 @@ public class DroneEntity extends Mob {
 
     }
 
-    private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin, int radius) {
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dy = -radius; dy <= radius; dy++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    BlockPos check = origin.offset(dx, dy, dz);
-                    if (level().getBlockState(check).getBlock() == Blocks.REDSTONE_BLOCK) {
-                        return Optional.of(check);
+    private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin) {
+        BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
+
+        for (int dx = -10; dx <= 10; dx++) {
+            for (int dy = -10; dy <= 10; dy++) {
+                for (int dz = -10; dz <= 10; dz++) {
+                    mutable.set(origin.getX() + dx, origin.getY() + dy, origin.getZ() + dz);
+                    if (level().getBlockState(mutable).is(Blocks.REDSTONE_BLOCK)) {
+                        return Optional.of(mutable.immutable()); // preserve immutability
                     }
                 }
             }
@@ -279,13 +279,13 @@ public class DroneEntity extends Mob {
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
                 .add(Attributes.MAX_HEALTH, 20.0)
-                .add(Attributes.MOVEMENT_SPEED, 1.0)
-                .add(Attributes.FLYING_SPEED, 1.0);
+                .add(Attributes.MOVEMENT_SPEED, 0.5)
+                .add(Attributes.FLYING_SPEED, 0.5);
     }
 
     @Override
     public SpawnGroupData finalizeSpawn(ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType reason, @Nullable SpawnGroupData spawnData) {
-        setPos(getX(), getY() + 1.0, getZ());
+        setPos(getX(), getY(), getZ());
         return super.finalizeSpawn(level, difficulty, reason, spawnData);
     }
 }
