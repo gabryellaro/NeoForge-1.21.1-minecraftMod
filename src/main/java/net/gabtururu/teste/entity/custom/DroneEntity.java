@@ -1,5 +1,6 @@
 package net.gabtururu.teste.entity.custom;
 
+import net.gabtururu.teste.entity.util.DroneBattery;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -23,12 +24,13 @@ import javax.annotation.Nullable;
 import java.util.Optional;
 
 public class DroneEntity extends Mob {
+    private DroneBattery battery = new DroneBattery(MAX_BATTERY);
     public final AnimationState flyAnimationState = new AnimationState();
     private int flyAnimationTimeout = 0;
 
     private static final TicketType<BlockPos> DRONE_TICKET = TicketType.create("drone_ticket", BlockPos::compareTo);
 
-    private static final int MAX_BATTERY = 300;
+    private static final int MAX_BATTERY = 100;
     private static final double LOW_BATTERY_THRESHOLD = 0.20; // 20%
 
     private Vec3 targetPosition;
@@ -39,7 +41,6 @@ public class DroneEntity extends Mob {
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
 
-    private int batteryLevel = MAX_BATTERY;
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -69,7 +70,7 @@ public class DroneEntity extends Mob {
             return; // Só anima no cliente
         }
 
-        double batteryPercentage = batteryLevel / (double) MAX_BATTERY;
+        double batteryPercentage = battery.getLevel() / (double) MAX_BATTERY;
 
         if (!returningToRecharge && batteryPercentage < LOW_BATTERY_THRESHOLD) {
             Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition());
@@ -82,13 +83,13 @@ public class DroneEntity extends Mob {
         }
 
         if (moving && targetPosition != null) {
-            if (batteryLevel <= 0) {
+            if (battery.getLevel() <= 0) {
                 stopMovement();
                 this.setNoGravity(false);
                 return;
             }
 
-            batteryLevel--;
+            battery.consume(level(), this);
 
             Vec3 directionToTarget = targetPosition.subtract(position());
             double distance = directionToTarget.length();
@@ -161,7 +162,7 @@ public class DroneEntity extends Mob {
             rechargeBattery(5);
         }
 
-        if (batteryLevel <= 10 && !findNearestRedstoneBlock(blockPosition()).isPresent()) {
+        if (battery.getLevel() <= 10 && !findNearestRedstoneBlock(blockPosition()).isPresent()) {
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
@@ -179,7 +180,7 @@ public class DroneEntity extends Mob {
             updateBatteryName();
         }
 
-        int batteryPercent = (int) ((batteryLevel / (double) MAX_BATTERY) * 100);
+        int batteryPercent = battery.getPercent();
         if (batteryPercent <= 20 && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
             sendMessageToNearestPlayer(Component.literal("§cBateria baixa! " + batteryPercent + "% restante."));
             lastBatteryPercentWarned = batteryPercent;
@@ -249,7 +250,7 @@ public class DroneEntity extends Mob {
     }
 
     private void rechargeBattery(int amount) {
-        batteryLevel = Math.min(MAX_BATTERY, batteryLevel + amount);
+        battery.recharge(amount);
     }
 
     private String getBatteryBar(int percent) {
@@ -265,7 +266,7 @@ public class DroneEntity extends Mob {
     }
 
     private void updateBatteryName() {
-        int percent = (int) ((batteryLevel / (double) MAX_BATTERY) * 100);
+        int percent = (int) ((battery.getLevel() / (double) MAX_BATTERY) * 100);
         String bar = getBatteryBar(percent);
         this.setCustomNameVisible(true);
         this.setCustomName(Component.literal("Bateria: " + bar + " " + percent + "%"));
