@@ -28,8 +28,10 @@ public class DroneEntity extends Mob {
     public final AnimationState flyAnimationState = new AnimationState();
     private int flyAnimationTimeout = 0;
 
+    // Ticket para manter chunks carregados enquanto o drone se move
     private static final TicketType<BlockPos> DRONE_TICKET = TicketType.create("drone_ticket", BlockPos::compareTo);
 
+    // Constantes de bateria
     private static final int MAX_BATTERY = 100;
     private static final double LOW_BATTERY_THRESHOLD = 0.20; // 20%
 
@@ -61,17 +63,18 @@ public class DroneEntity extends Mob {
         }
     }
 
+    // Método principal chamado a cada tick do jogo
     @Override
     public void tick() {
         super.tick();
 
         if (this.level().isClientSide()) {
             this.setupAnimationStates();
-            return; // Só anima no cliente
+            return;
         }
 
+        // Verifica nível de bateria e inicia retorno para recarga se necessário
         double batteryPercentage = battery.getLevel() / (double) MAX_BATTERY;
-
         if (!returningToRecharge && batteryPercentage < LOW_BATTERY_THRESHOLD) {
             Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition());
             if (nearestRecharge.isPresent()) {
@@ -82,6 +85,7 @@ public class DroneEntity extends Mob {
             }
         }
 
+        // Lógica de movimentação do drone
         if (moving && targetPosition != null) {
             if (battery.getLevel() <= 0) {
                 stopMovement();
@@ -91,9 +95,11 @@ public class DroneEntity extends Mob {
 
             battery.consume(level(), this);
 
+            // Calcula direção e distância até o alvo
             Vec3 directionToTarget = targetPosition.subtract(position());
             double distance = directionToTarget.length();
 
+            // Se chegou ao destino, para o movimento e recarrega se necessário
             if (distance < 1.0) {
                 if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
                     rechargeBattery(MAX_BATTERY);
@@ -103,9 +109,9 @@ public class DroneEntity extends Mob {
                 return;
             }
 
+            // Influência da água no movimento
             Vec3 waterInfluence = Vec3.ZERO;
             int waterCount = 0;
-
             for (int dx = -1; dx <= 1; dx++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     if (dx == 0 && dz == 0) continue;
@@ -120,6 +126,7 @@ public class DroneEntity extends Mob {
                 }
             }
 
+            // Calcula direção final considerando água
             Vec3 finalDirection;
             if (waterCount > 0) {
                 Vec3 avgWaterDir = waterInfluence.scale(1.0 / waterCount).normalize();
@@ -128,12 +135,14 @@ public class DroneEntity extends Mob {
                 finalDirection = directionToTarget.normalize();
             }
 
+            // Verifica obstáculos à frente
             Vec3 forward = finalDirection.scale(0.5);
             Vec3 ahead = position().add(forward);
             BlockPos checkPos = new BlockPos((int) Math.floor(ahead.x), (int) Math.floor(ahead.y), (int) Math.floor(ahead.z));
             BlockState blockAhead = level().getBlockState(checkPos);
             boolean isBlocked = !blockAhead.isAir();
 
+            // Calcula velocidade vertical
             double verticalDiff = targetPosition.y - getY();
             double verticalSpeed = Math.max(Math.min(verticalDiff * 0.05, 0.15), -0.15);
 
@@ -141,12 +150,14 @@ public class DroneEntity extends Mob {
                 verticalSpeed = 0.2;
             }
 
+            // Aplica movimento
             Vec3 horizontalDir = new Vec3(finalDirection.x, 0, finalDirection.z).normalize().scale(0.3);
             Vec3 velocity = new Vec3(horizontalDir.x, verticalSpeed, horizontalDir.z);
 
             setDeltaMovement(velocity);
             moveSelf();
         } else {
+            // Mantém o drone flutuando a uma altura desejada
             double desiredHeight = 1.0;
             double currentY = getY();
             BlockPos groundPos = blockPosition().below();
@@ -157,11 +168,13 @@ public class DroneEntity extends Mob {
             moveSelf();
         }
 
+        // Recarrega bateria se estiver sobre bloco de redstone
         BlockPos under = blockPosition().below();
         if (level().getBlockState(under).is(Blocks.REDSTONE_BLOCK)) {
-            rechargeBattery(5);
+            rechargeBattery(2);
         }
 
+        // Se bateria está muito baixa e não há recarga próxima, para o movimento e simula queda
         if (battery.getLevel() <= 10 && !findNearestRedstoneBlock(blockPosition()).isPresent()) {
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
@@ -176,10 +189,12 @@ public class DroneEntity extends Mob {
             }
         }
 
+        // Atualiza nome do drone com barra de bateria a cada segundo
         if (tickCount % 20 == 0) {
             updateBatteryName();
         }
 
+        // Envia mensagem ao jogador mais próximo sobre o nível da bateria
         int batteryPercent = battery.getPercent();
         if (batteryPercent <= 20 && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
             sendMessageToNearestPlayer(Component.literal("§cBateria baixa! " + batteryPercent + "% restante."));
@@ -191,9 +206,9 @@ public class DroneEntity extends Mob {
 
     }
 
+    // Busca bloco de redstone mais próximo para recarga
     private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin) {
         BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
-
         for (int dx = -10; dx <= 10; dx++) {
             for (int dy = -10; dy <= 10; dy++) {
                 for (int dz = -10; dz <= 10; dz++) {
@@ -207,6 +222,7 @@ public class DroneEntity extends Mob {
         return Optional.empty();
     }
 
+    // Envia mensagem ao jogador mais próximo
     private void sendMessageToNearestPlayer(Component message) {
         Player nearestPlayer = level().getNearestPlayer(blockPosition().getX(), blockPosition().getY(), blockPosition().getZ(), 50, false);
         if (nearestPlayer instanceof ServerPlayer serverPlayer) {
@@ -214,10 +230,12 @@ public class DroneEntity extends Mob {
         }
     }
 
+    // Move a entidade usando o tipo SELF
     private void moveSelf() {
         move(MoverType.SELF, getDeltaMovement());
     }
 
+    // Inicia movimento para uma posição alvo
     public void moveToPosition(Vec3 target) {
         this.targetPosition = target;
         this.moving = true;
@@ -249,22 +267,33 @@ public class DroneEntity extends Mob {
         }
     }
 
+    // Recarrega a bateria do drone
     private void rechargeBattery(int amount) {
-        battery.recharge(amount);
+        battery.tickRecharge(level(), this);
     }
 
+    // Gera barra visual de bateria
     private String getBatteryBar(int percent) {
         int totalBars = 10;
-        int filledBars = (int) ((percent / 100.0) * totalBars);
+        double percentPerBar = 100.0 / totalBars;
+        int fullBars = (int) (percent / percentPerBar);
+        boolean hasHalfBar = (percent % percentPerBar) >= (percentPerBar / 2);
 
         StringBuilder bar = new StringBuilder("[");
         for (int i = 0; i < totalBars; i++) {
-            bar.append(i < filledBars ? "█" : " ");
+            if (i < fullBars) {
+                bar.append("█");
+            } else if (i == fullBars && hasHalfBar) {
+                bar.append("▒");
+            } else {
+                bar.append(" ");
+            }
         }
         bar.append("]");
         return bar.toString();
     }
 
+    // Atualiza o nome customizado do drone com a barra de bateria
     private void updateBatteryName() {
         int percent = (int) ((battery.getLevel() / (double) MAX_BATTERY) * 100);
         String bar = getBatteryBar(percent);

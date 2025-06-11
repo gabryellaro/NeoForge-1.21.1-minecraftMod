@@ -2,6 +2,7 @@ package net.gabtururu.teste.entity.util;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.gabtururu.teste.entity.custom.DroneEntity;
 
@@ -9,7 +10,7 @@ public class DroneBattery {
     private int level;
     private final int maxLevel;
     private int tickCounter = 0;
-    private static final int TICK_INTERVAL = 5; // consome a cada 5 ticks
+    private static final int TICK_INTERVAL = 5;
 
     public DroneBattery(int maxLevel) {
         this.level = maxLevel;
@@ -28,6 +29,15 @@ public class DroneBattery {
         level = Math.min(maxLevel, level + amount);
     }
 
+    public void tickRecharge(Level levelContext, DroneEntity drone) {
+        BlockPos under = drone.blockPosition().below();
+        boolean isRedstone = levelContext.getBlockState(under).is(Blocks.REDSTONE_BLOCK);
+
+        if (isRedstone && drone.getDeltaMovement().lengthSqr() < 0.002) {
+            recharge(1);
+        }
+    }
+
     public void consume(Level levelContext, DroneEntity drone) {
         tickCounter++;
         if (tickCounter < TICK_INTERVAL || this.level <= 0) return;
@@ -37,10 +47,13 @@ public class DroneBattery {
 
         Vec3 motion = drone.getDeltaMovement();
         if (motion.horizontalDistanceSqr() > 0.0025) drain += 1;
-        if (levelContext.isRainingAt(drone.blockPosition())) drain += 1;
+        if (levelContext.isRainingAt(drone.blockPosition())) drain += 2;
+        if (levelContext.isThundering() && levelContext.isRainingAt(drone.blockPosition())) {
+            drain += 3;
+        }
         if (drone.getY() > 150) drain += 1;
 
-        drain = Math.max(1, drain); // mínimo de 1
+        drain = Math.max(1, drain);
 
         level = Math.max(0, level - drain);
     }
