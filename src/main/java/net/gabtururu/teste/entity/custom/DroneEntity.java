@@ -176,6 +176,43 @@ public class DroneEntity extends Mob {
 
         // Se bateria está muito baixa e não há recarga próxima, para o movimento e simula queda
         if (battery.getLevel() <= 10 && !findNearestRedstoneBlock(blockPosition()).isPresent()) {
+            boolean waterBelow = false;
+            for (int i = 1; i <= 6; i++) {
+                BlockPos pos = this.blockPosition().below(i);
+                if (level().getBlockState(pos).getFluidState().isSource()) {
+                    waterBelow = true;
+                    break;
+                }
+            }
+
+            if (waterBelow) {
+                // Varre uma área de 9x9 em busca de solo sólido e seco
+                BlockPos safePos = null;
+                outer:
+                for (int dx = -7; dx <= 7; dx++) {
+                    for (int dz = -7; dz <= 7; dz++) {
+                        for (int dy = 0; dy <= 4; dy++) { // até 2 blocos acima ou no mesmo nível
+                            BlockPos check = this.blockPosition().offset(dx, -1 + dy, dz);
+                            BlockState state = level().getBlockState(check);
+                            boolean isSolid = state.isSolid();
+                            boolean notWater = !state.getFluidState().isSource();
+
+                            if (isSolid && notWater) {
+                                safePos = check.above(); // pousar acima do bloco
+                                break outer;
+                            }
+                        }
+                    }
+                }
+
+                if (safePos != null) {
+                    this.targetPosition = Vec3.atCenterOf(safePos);
+                    this.moving = true;
+                    return;
+                }
+            }
+
+            // Se não achar lugar seguro, pousa mesmo assim
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
@@ -188,6 +225,7 @@ public class DroneEntity extends Mob {
                 this.setDeltaMovement(Vec3.ZERO);
             }
         }
+
 
         // Atualiza nome do drone com barra de bateria a cada segundo
         if (tickCount % 20 == 0) {
