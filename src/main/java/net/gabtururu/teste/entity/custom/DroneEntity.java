@@ -1,6 +1,7 @@
 package net.gabtururu.teste.entity.custom;
 
 import net.gabtururu.teste.entity.util.DroneBattery;
+import net.gabtururu.teste.environment.WindSystem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -94,7 +95,7 @@ public class DroneEntity extends Mob {
                 return;
             }
 
-            battery.consume(level(), this);
+            battery.consume(level(), this, calculateWindFactor());
 
             // Calcula direção e distância até o alvo
             Vec3 directionToTarget = targetPosition.subtract(position());
@@ -109,6 +110,8 @@ public class DroneEntity extends Mob {
                 stopMovement();
                 return;
             }
+
+            WindSystem.updateWind(level());
 
             // Influência da água no movimento
             Vec3 waterInfluence = Vec3.ZERO;
@@ -331,6 +334,19 @@ public class DroneEntity extends Mob {
         bar.append("]");
         return bar.toString();
     }
+
+    private double calculateWindFactor() {
+        if (targetPosition == null) return 1.0;
+
+        Vec3 movementDir = targetPosition.subtract(position()).normalize();
+        Vec3 windDir = WindSystem.getWindDirection();
+        double windStrength = WindSystem.getWindStrength();
+
+        double dot = movementDir.dot(windDir); // -1 (contra), 0 (lateral), 1 (a favor)
+        double adjustment = 1.0 - (dot * windStrength);
+        return Math.max(0.5, Math.min(1.5, adjustment));
+    }
+
 
     // Atualiza o nome customizado do drone com a barra de bateria
     private void updateBatteryName() {

@@ -38,7 +38,7 @@ public class DroneBattery {
         }
     }
 
-    public void consume(Level levelContext, DroneEntity drone) {
+    public void consume(Level levelContext, DroneEntity drone, double multiplier) {
         tickCounter++;
         if (tickCounter < TICK_INTERVAL || this.level <= 0) return;
         tickCounter = 0;
@@ -54,6 +54,9 @@ public class DroneBattery {
         if (drone.getY() > 150) drain += 1;
 
         drain = Math.max(1, drain);
+
+        // Aplica o modificador do vento
+        drain = (int) Math.ceil(drain * multiplier);
 
         level = Math.max(0, level - drain);
     }

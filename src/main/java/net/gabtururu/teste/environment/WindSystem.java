@@ -1,0 +1,65 @@
+package net.gabtururu.teste.environment;
+
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
+
+public class WindSystem {
+    private static Vec3 currentWind = new Vec3(1, 0, 0);
+    private static double windStrength = 0.05;
+    private static long lastUpdateTime = -1;
+
+    public static void updateWind(Level level) {
+        long time = level.getGameTime();
+
+        if (time % 200 == 0 && time != lastUpdateTime && !level.isClientSide()) {
+            RandomSource random = level.getRandom();
+            double angle = random.nextDouble() * 2 * Math.PI;
+            Vec3 newWind = new Vec3(Math.cos(angle), 0, Math.sin(angle)).normalize();
+            double newStrength = 0.03 + (random.nextDouble() * 0.07);
+
+            // Verifica se a direção mudou
+            if (!newWind.equals(currentWind)) {
+                currentWind = newWind;
+                windStrength = newStrength;
+
+                // Manda mensagem para os jogadores apenas no lado do servidor
+                if (level instanceof ServerLevel serverLevel) {
+                    String direction = getWindDirectionName(currentWind);
+                    Component msg = Component.literal("§b[Clima] O vento agora sopra para " + direction + " com força " + String.format("%.2f", windStrength));
+                    for (ServerPlayer player : serverLevel.players()) {
+                        player.sendSystemMessage(msg);
+                    }
+                }
+            }
+
+            lastUpdateTime = time;
+        }
+    }
+
+    public static Vec3 getWindDirection() {
+        return currentWind.normalize();
+    }
+
+    public static double getWindStrength() {
+        return windStrength;
+    }
+
+    // Converte direção do vento para string amigável (ex: Norte, Sul, etc.)
+    private static String getWindDirectionName(Vec3 vec) {
+        double angle = Math.toDegrees(Math.atan2(-vec.z, vec.x)); // z invertido pois no MC o eixo Z cresce para o sul
+        if (angle < 0) angle += 360;
+
+        if (angle >= 337.5 || angle < 22.5) return "Leste";
+        else if (angle < 67.5) return "Nordeste";
+        else if (angle < 112.5) return "Norte";
+        else if (angle < 157.5) return "Noroeste";
+        else if (angle < 202.5) return "Oeste";
+        else if (angle < 247.5) return "Sudoeste";
+        else if (angle < 292.5) return "Sul";
+        else return "Sudeste";
+    }
+}
