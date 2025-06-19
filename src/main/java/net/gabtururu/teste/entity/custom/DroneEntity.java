@@ -78,7 +78,8 @@ public class DroneEntity extends Mob {
         if (!returningToRecharge && batteryPercentage < LOW_BATTERY_THRESHOLD) {
             Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition());
             if (nearestRecharge.isPresent()) {
-                targetPosition = Vec3.atCenterOf(nearestRecharge.get());
+                BlockPos pos = nearestRecharge.get();
+                targetPosition = new Vec3(pos.getX() + 0.5, pos.getY() + 1.1, pos.getZ() + 0.5);
                 returningToRecharge = true;
                 rechargeStation = nearestRecharge.get();
                 moving = true;
@@ -100,7 +101,7 @@ public class DroneEntity extends Mob {
             double distance = directionToTarget.length();
 
             // Se chegou ao destino, para o movimento e recarrega se necessário
-            if (distance < 1.0) {
+            if (distance < 0.5) {
                 if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
                     rechargeBattery(MAX_BATTERY);
                     returningToRecharge = false;
@@ -186,12 +187,12 @@ public class DroneEntity extends Mob {
             }
 
             if (waterBelow) {
-                // Varre uma área de 9x9 em busca de solo sólido e seco
+                // Varre uma área de 15x15 em busca de solo sólido e seco
                 BlockPos safePos = null;
                 outer:
                 for (int dx = -7; dx <= 7; dx++) {
                     for (int dz = -7; dz <= 7; dz++) {
-                        for (int dy = 0; dy <= 4; dy++) { // até 2 blocos acima ou no mesmo nível
+                        for (int dy = 0; dy <= 4; dy++) { // até 4 blocos acima ou no mesmo nível
                             BlockPos check = this.blockPosition().offset(dx, -1 + dy, dz);
                             BlockState state = level().getBlockState(check);
                             boolean isSolid = state.isSolid();
