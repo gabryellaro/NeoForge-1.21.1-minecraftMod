@@ -35,6 +35,7 @@ public class DroneEntity extends Mob {
     // Constantes de bateria
     private static final int MAX_BATTERY = 100;
     private static final double LOW_BATTERY_THRESHOLD = 0.20; // 20%
+    private static final double CRITICAL_BATTERY_THRESHOLD = 0.10; // 10%
 
     private Vec3 targetPosition;
     private boolean moving = false;
@@ -44,6 +45,13 @@ public class DroneEntity extends Mob {
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
 
+    public void setBatteryCapacity(int newCapacity) {
+        this.battery = new DroneBattery(newCapacity);
+    }
+
+    public void setBatteryLevel(int level) {
+        this.battery.setLevel(level);
+    }
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -183,10 +191,9 @@ public class DroneEntity extends Mob {
         boolean windFavorable = isWindFavorable();
         boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 15.0;
 
-        if (battery.getLevel() <= 10
+        if (battery.getLevel() <= MAX_BATTERY * CRITICAL_BATTERY_THRESHOLD
                 && !findNearestRedstoneBlock(blockPosition()).isPresent()
                 && !(nearTarget && windFavorable)) {
-
             boolean waterBelow = false;
             for (int i = 1; i <= 6; i++) {
                 BlockPos pos = this.blockPosition().below(i);
@@ -195,9 +202,8 @@ public class DroneEntity extends Mob {
                     break;
                 }
             }
-
             if (waterBelow) {
-                // Busca terreno seco para pousar
+                // Search for dry land to land on
                 BlockPos safePos = null;
                 outer:
                 for (int dx = -7; dx <= 7; dx++) {
@@ -223,7 +229,7 @@ public class DroneEntity extends Mob {
                 }
             }
 
-            // Sem ponto seguro, simula queda
+            // If no safe spot found, simulate fall
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
@@ -236,7 +242,6 @@ public class DroneEntity extends Mob {
                 this.setDeltaMovement(Vec3.ZERO);
             }
         }
-
 
         // Atualiza nome do drone com barra de bateria a cada segundo
         if (tickCount % 20 == 0) {
@@ -366,7 +371,7 @@ public class DroneEntity extends Mob {
 
     // Atualiza o nome customizado do drone com a barra de bateria
     private void updateBatteryName() {
-        int percent = (int) ((battery.getLevel() / (double) MAX_BATTERY) * 100);
+        int percent = battery.getPercent(); // Corrigido
         String bar = getBatteryBar(percent);
         this.setCustomNameVisible(true);
         this.setCustomName(Component.literal("Bateria: " + bar + " " + percent + "%"));

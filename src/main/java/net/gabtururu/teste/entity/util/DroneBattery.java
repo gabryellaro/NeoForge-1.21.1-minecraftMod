@@ -21,6 +21,10 @@ public class DroneBattery {
         return level;
     }
 
+    public void setLevel(int newLevel) {
+        this.level = Math.max(0, Math.min(maxLevel, newLevel));
+    }
+
     public int getPercent() {
         return (int)((level / (double) maxLevel) * 100);
     }
