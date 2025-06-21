@@ -179,7 +179,14 @@ public class DroneEntity extends Mob {
         }
 
         // Se bateria está muito baixa e não há recarga próxima, para o movimento e simula queda
-        if (battery.getLevel() <= 10 && !findNearestRedstoneBlock(blockPosition()).isPresent()) {
+        // Se bateria está muito baixa e não há recarga próxima, verificar se pode seguir até o destino
+        boolean windFavorable = isWindFavorable();
+        boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 15.0;
+
+        if (battery.getLevel() <= 10
+                && !findNearestRedstoneBlock(blockPosition()).isPresent()
+                && !(nearTarget && windFavorable)) {
+
             boolean waterBelow = false;
             for (int i = 1; i <= 6; i++) {
                 BlockPos pos = this.blockPosition().below(i);
@@ -189,16 +196,8 @@ public class DroneEntity extends Mob {
                 }
             }
 
-            boolean windFavorable = isWindFavorable();
-            boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 5.0;
-
-            if (waterBelow && windFavorable && nearTarget) {
-                // Ignore terrain search, continue to destination
-                return;
-            }
-
             if (waterBelow) {
-                // Search for dry land to land on
+                // Busca terreno seco para pousar
                 BlockPos safePos = null;
                 outer:
                 for (int dx = -7; dx <= 7; dx++) {
@@ -224,7 +223,7 @@ public class DroneEntity extends Mob {
                 }
             }
 
-            // If no safe spot found, simulate fall
+            // Sem ponto seguro, simula queda
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
@@ -237,6 +236,7 @@ public class DroneEntity extends Mob {
                 this.setDeltaMovement(Vec3.ZERO);
             }
         }
+
 
         // Atualiza nome do drone com barra de bateria a cada segundo
         if (tickCount % 20 == 0) {
