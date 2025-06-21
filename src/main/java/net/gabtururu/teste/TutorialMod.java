@@ -3,6 +3,7 @@ package net.gabtururu.teste;
 import com.mojang.brigadier.CommandDispatcher;
 import net.gabtururu.teste.block.ModBlocks;
 import net.gabtururu.teste.command.DroneMoveCommand;
+import net.gabtururu.teste.command.WindCommand;
 import net.gabtururu.teste.entity.ModEntities;
 import net.gabtururu.teste.entity.client.DroneRenderer;
 import net.gabtururu.teste.item.ModItems;
@@ -83,6 +84,7 @@ public class TutorialMod {
         CommandDispatcher<CommandSourceStack> dispatcher = server.getCommands().getDispatcher();
 
         DroneMoveCommand.register(dispatcher);
+        WindCommand.register(dispatcher);
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent

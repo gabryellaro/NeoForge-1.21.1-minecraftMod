@@ -11,31 +11,18 @@ public class WindSystem {
     private static Vec3 currentWind = new Vec3(1, 0, 0);
     private static double windStrength = 0.05;
     private static long lastUpdateTime = -1;
+    private static boolean randomWindEnabled = false;
 
     public static void updateWind(Level level) {
         long time = level.getGameTime();
 
-        if (time % 200 == 0 && time != lastUpdateTime && !level.isClientSide()) {
+        if (randomWindEnabled && time % 200 == 0 && time != lastUpdateTime && !level.isClientSide()) {
             RandomSource random = level.getRandom();
             double angle = random.nextDouble() * 2 * Math.PI;
             Vec3 newWind = new Vec3(Math.cos(angle), 0, Math.sin(angle)).normalize();
             double newStrength = 0.03 + (random.nextDouble() * 0.07);
 
-            // Verifica se a direção mudou
-            if (!newWind.equals(currentWind)) {
-                currentWind = newWind;
-                windStrength = newStrength;
-
-                // Manda mensagem para os jogadores apenas no lado do servidor
-                if (level instanceof ServerLevel serverLevel) {
-                    String direction = getWindDirectionName(currentWind);
-                    Component msg = Component.literal("§b[Clima] O vento agora sopra para " + direction + " com força " + String.format("%.2f", windStrength));
-                    for (ServerPlayer player : serverLevel.players()) {
-                        player.sendSystemMessage(msg);
-                    }
-                }
-            }
-
+            setWind(newWind, newStrength, (ServerLevel) level);
             lastUpdateTime = time;
         }
     }
@@ -48,9 +35,27 @@ public class WindSystem {
         return windStrength;
     }
 
-    // Converte direção do vento para string amigável (ex: Norte, Sul, etc.)
+    public static void setWind(Vec3 direction, double strength, ServerLevel level) {
+        currentWind = direction.normalize();
+        windStrength = strength;
+
+        String directionName = getWindDirectionName(currentWind);
+        Component msg = Component.literal("§b[Clima] O vento agora sopra para " + directionName + " com força " + String.format("%.2f", windStrength));
+        for (ServerPlayer player : level.players()) {
+            player.sendSystemMessage(msg);
+        }
+    }
+
+    public static void enableRandomWind(boolean enabled, ServerLevel level) {
+        randomWindEnabled = enabled;
+        Component msg = Component.literal("§e[Clima] Vento randômico " + (enabled ? "ativado." : "desativado."));
+        for (ServerPlayer player : level.players()) {
+            player.sendSystemMessage(msg);
+        }
+    }
+
     private static String getWindDirectionName(Vec3 vec) {
-        double angle = Math.toDegrees(Math.atan2(-vec.z, vec.x)); // z invertido pois no MC o eixo Z cresce para o sul
+        double angle = Math.toDegrees(Math.atan2(-vec.z, vec.x));
         if (angle < 0) angle += 360;
 
         if (angle >= 337.5 || angle < 22.5) return "Leste";

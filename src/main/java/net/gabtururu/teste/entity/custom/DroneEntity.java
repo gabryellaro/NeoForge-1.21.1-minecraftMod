@@ -189,20 +189,28 @@ public class DroneEntity extends Mob {
                 }
             }
 
+            boolean windFavorable = isWindFavorable();
+            boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 5.0;
+
+            if (waterBelow && windFavorable && nearTarget) {
+                // Ignore terrain search, continue to destination
+                return;
+            }
+
             if (waterBelow) {
-                // Varre uma área de 15x15 em busca de solo sólido e seco
+                // Search for dry land to land on
                 BlockPos safePos = null;
                 outer:
                 for (int dx = -7; dx <= 7; dx++) {
                     for (int dz = -7; dz <= 7; dz++) {
-                        for (int dy = 0; dy <= 4; dy++) { // até 4 blocos acima ou no mesmo nível
+                        for (int dy = 0; dy <= 4; dy++) {
                             BlockPos check = this.blockPosition().offset(dx, -1 + dy, dz);
                             BlockState state = level().getBlockState(check);
                             boolean isSolid = state.isSolid();
                             boolean notWater = !state.getFluidState().isSource();
 
                             if (isSolid && notWater) {
-                                safePos = check.above(); // pousar acima do bloco
+                                safePos = check.above();
                                 break outer;
                             }
                         }
@@ -216,7 +224,7 @@ public class DroneEntity extends Mob {
                 }
             }
 
-            // Se não achar lugar seguro, pousa mesmo assim
+            // If no safe spot found, simulate fall
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
@@ -229,7 +237,6 @@ public class DroneEntity extends Mob {
                 this.setDeltaMovement(Vec3.ZERO);
             }
         }
-
 
         // Atualiza nome do drone com barra de bateria a cada segundo
         if (tickCount % 20 == 0) {
@@ -347,6 +354,15 @@ public class DroneEntity extends Mob {
         return Math.max(0.5, Math.min(1.5, adjustment));
     }
 
+    private boolean isWindFavorable() {
+        if (targetPosition == null) return false;
+
+        Vec3 movementDir = targetPosition.subtract(position()).normalize();
+        Vec3 windDir = WindSystem.getWindDirection();
+        double dot = movementDir.dot(windDir);
+
+        return dot > 0.7; // vento está empurrando o drone para frente
+    }
 
     // Atualiza o nome customizado do drone com a barra de bateria
     private void updateBatteryName() {
