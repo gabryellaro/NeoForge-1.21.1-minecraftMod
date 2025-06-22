@@ -12,7 +12,7 @@ public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ModRegister.MOD_ID);
 
     public static final DeferredItem<Item> SPAWN_DRONE = ITEMS.register("drone_spawn",
-            () -> new DeferredSpawnEggItem(ModEntities.DRONE, 0x31afaf, 0xffac00,
+            () -> new DeferredSpawnEggItem(ModEntities.DRONE, 0x5C5C5C, 0xD3D3D3,
                     new Item.Properties()));
 
     public static void register(IEventBus eventBus){
