@@ -8,15 +8,16 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
 public class WindSystem {
+    // Vento inicial: soprando do oeste para o leste (+X), como ventos reais
     private static Vec3 currentWind = new Vec3(1, 0, 0);
-    private static double windStrength = 0.05;
+    private static double windStrength = 0.05; // força média do vento
     private static long lastUpdateTime = -1;
     private static boolean randomWindEnabled = false;
 
     public static void updateWind(Level level) {
         long time = level.getGameTime();
 
-        if (randomWindEnabled && time % 200 == 0 && time != lastUpdateTime && !level.isClientSide()) {
+        if (randomWindEnabled && time % 1200 == 0 && time != lastUpdateTime && !level.isClientSide()) {
             RandomSource random = level.getRandom();
             double angle = random.nextDouble() * 2 * Math.PI;
             Vec3 newWind = new Vec3(Math.cos(angle), 0, Math.sin(angle)).normalize();

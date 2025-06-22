@@ -53,14 +53,14 @@ public class WindCommand {
 
     private static Vec3 parseDirection(String dir) {
         return switch (dir.toLowerCase()) {
-            case "norte" -> new Vec3(0, 0, -1);
-            case "sul" -> new Vec3(0, 0, 1);
-            case "leste" -> new Vec3(1, 0, 0);
-            case "oeste" -> new Vec3(-1, 0, 0);
-            case "nordeste" -> new Vec3(1, 0, -1);
-            case "noroeste" -> new Vec3(-1, 0, -1);
-            case "sudeste" -> new Vec3(1, 0, 1);
-            case "sudoeste" -> new Vec3(-1, 0, 1);
+            case "north" -> new Vec3(0, 0, -1);
+            case "south" -> new Vec3(0, 0, 1);
+            case "east" -> new Vec3(1, 0, 0);
+            case "west" -> new Vec3(-1, 0, 0);
+            case "northeast" -> new Vec3(1, 0, -1);
+            case "northwest" -> new Vec3(-1, 0, -1);
+            case "southeast" -> new Vec3(1, 0, 1);
+            case "southwest" -> new Vec3(-1, 0, 1);
             default -> null;
         };
     }

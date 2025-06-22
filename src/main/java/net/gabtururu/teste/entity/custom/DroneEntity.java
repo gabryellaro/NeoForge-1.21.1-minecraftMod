@@ -339,8 +339,20 @@ public class DroneEntity extends Mob {
         int fullBars = (int) (percent / percentPerBar);
         boolean hasHalfBar = (percent % percentPerBar) >= (percentPerBar / 2);
 
+        // Define a cor da barra inteira conforme o percentual
+        String colorCode;
+        if (percent > 50) {
+            colorCode = "§a"; // Verde-claro
+        } else if (percent > 20) {
+            colorCode = "§e"; // Amarelo
+        } else {
+            colorCode = "§c"; // Vermelho
+        }
+
         StringBuilder bar = new StringBuilder("[");
         for (int i = 0; i < totalBars; i++) {
+            bar.append(colorCode);  // Aplica a cor antes do caractere
+
             if (i < fullBars) {
                 bar.append("█");
             } else if (i == fullBars && hasHalfBar) {
@@ -349,7 +361,8 @@ public class DroneEntity extends Mob {
                 bar.append(" ");
             }
         }
-        bar.append("]");
+        bar.append("§r]"); // Reseta a cor ao final da barra
+
         return bar.toString();
     }
 
