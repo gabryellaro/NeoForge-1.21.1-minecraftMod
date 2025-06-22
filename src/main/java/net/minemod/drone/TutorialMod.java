@@ -1,12 +1,11 @@
-package net.gabtururu.teste;
+package net.minemod.drone;
 
 import com.mojang.brigadier.CommandDispatcher;
-import net.gabtururu.teste.block.ModBlocks;
-import net.gabtururu.teste.command.DroneCommand;
-import net.gabtururu.teste.command.WindCommand;
-import net.gabtururu.teste.entity.ModEntities;
-import net.gabtururu.teste.entity.client.DroneRenderer;
-import net.gabtururu.teste.item.ModItems;
+import net.minemod.drone.command.DroneCommand;
+import net.minemod.drone.command.WindCommand;
+import net.minemod.drone.entity.ModEntities;
+import net.minemod.drone.entity.client.DroneRenderer;
+import net.minemod.drone.item.ModItems;
 import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.MinecraftServer;
@@ -46,7 +45,6 @@ public class TutorialMod {
         NeoForge.EVENT_BUS.register(this);
 
         ModItems.register(modEventBus);
-        ModBlocks.register(modEventBus);
         ModEntities.register(modEventBus);
 
         // Register the item to a creative tab
@@ -64,14 +62,7 @@ public class TutorialMod {
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         //O Bismuto está sendo adicionado na tabela de ingredientes
         if(event.getTabKey() == CreativeModeTabs.INGREDIENTS){
-            event.accept(ModItems.BISMUTH);
-            event.accept(ModItems.RAW_BISMUTH);
-            event.accept(ModItems.EGG_DRONE);
-        }
-
-        if(event.getTabKey() == CreativeModeTabs.BUILDING_BLOCKS){
-            event.accept(ModBlocks.BISMUTH_BLOCK);
-            event.accept(ModBlocks.BISMUTH_ORE);
+            event.accept(ModItems.SPAWN_DRONE);
         }
 
     }

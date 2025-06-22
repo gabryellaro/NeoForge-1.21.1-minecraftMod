@@ -1,4 +1,4 @@
-package net.gabtururu.teste.entity.client;
+package net.minemod.drone.entity.client;
 
 
 import net.minecraft.client.animation.AnimationChannel;

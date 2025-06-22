@@ -1,10 +1,10 @@
-package net.gabtururu.teste.entity.client;
+package net.minemod.drone.entity.client;
 
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.gabtururu.teste.TutorialMod;
-import net.gabtururu.teste.entity.custom.DroneEntity;
+import net.minemod.drone.TutorialMod;
+import net.minemod.drone.entity.custom.DroneEntity;
 import net.minecraft.client.model.HierarchicalModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
 import net.minecraft.client.model.geom.ModelPart;

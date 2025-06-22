@@ -1,10 +1,10 @@
-package net.gabtururu.teste.command;
+package net.minemod.drone.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import net.gabtururu.teste.environment.WindSystem;
+import net.minemod.drone.environment.WindSystem;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;

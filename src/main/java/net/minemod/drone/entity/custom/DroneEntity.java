@@ -1,7 +1,7 @@
-package net.gabtururu.teste.entity.custom;
+package net.minemod.drone.entity.custom;
 
-import net.gabtururu.teste.entity.util.DroneBattery;
-import net.gabtururu.teste.environment.WindSystem;
+import net.minemod.drone.entity.util.DroneBattery;
+import net.minemod.drone.environment.WindSystem;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;

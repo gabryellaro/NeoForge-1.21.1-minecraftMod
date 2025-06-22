@@ -1,8 +1,8 @@
-package net.gabtururu.teste.entity.client;
+package net.minemod.drone.entity.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.gabtururu.teste.TutorialMod;
-import net.gabtururu.teste.entity.custom.DroneEntity;
+import net.minemod.drone.TutorialMod;
+import net.minemod.drone.entity.custom.DroneEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.client.renderer.entity.MobRenderer;

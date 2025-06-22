@@ -1,4 +1,4 @@
-package net.gabtururu.teste;
+package net.minemod.drone;
 
 import java.util.List;
 import java.util.Set;

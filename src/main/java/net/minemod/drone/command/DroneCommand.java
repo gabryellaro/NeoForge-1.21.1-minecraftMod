@@ -1,9 +1,9 @@
-package net.gabtururu.teste.command;
+package net.minemod.drone.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import net.gabtururu.teste.entity.custom.DroneEntity;
+import net.minemod.drone.entity.custom.DroneEntity;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;

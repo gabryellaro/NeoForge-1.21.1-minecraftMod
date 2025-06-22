@@ -1,7 +1,7 @@
-package net.gabtururu.teste.entity;
+package net.minemod.drone.entity;
 
-import net.gabtururu.teste.TutorialMod;
-import net.gabtururu.teste.entity.custom.DroneEntity;
+import net.minemod.drone.TutorialMod;
+import net.minemod.drone.entity.custom.DroneEntity;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;

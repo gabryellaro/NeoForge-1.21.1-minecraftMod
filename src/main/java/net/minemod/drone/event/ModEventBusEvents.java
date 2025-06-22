@@ -1,9 +1,9 @@
-package net.gabtururu.teste.event;
+package net.minemod.drone.event;
 
-import net.gabtururu.teste.TutorialMod;
-import net.gabtururu.teste.entity.ModEntities;
-import net.gabtururu.teste.entity.client.DroneModel;
-import net.gabtururu.teste.entity.custom.DroneEntity;
+import net.minemod.drone.TutorialMod;
+import net.minemod.drone.entity.ModEntities;
+import net.minemod.drone.entity.client.DroneModel;
+import net.minemod.drone.entity.custom.DroneEntity;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;

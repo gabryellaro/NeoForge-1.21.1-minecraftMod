@@ -1,4 +1,4 @@
-package net.gabtururu.teste.environment;
+package net.minemod.drone.environment;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;

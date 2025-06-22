@@ -1,7 +1,7 @@
-package net.gabtururu.teste.item;
+package net.minemod.drone.item;
 
-import net.gabtururu.teste.TutorialMod;
-import net.gabtururu.teste.entity.ModEntities;
+import net.minemod.drone.TutorialMod;
+import net.minemod.drone.entity.ModEntities;
 import net.minecraft.world.item.Item;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.DeferredSpawnEggItem;
@@ -14,11 +14,7 @@ public class ModItems {
 
     //aqui é o primeiro item registrado com um id que deve ser identificavel
     //o nome dentro do registro deve ser uppercase como tudo que tem no mine
-    public static final DeferredItem<Item> BISMUTH = ITEMS.register("bismuth",
-            () -> new Item(new Item.Properties()));
-    public static  final DeferredItem<Item> RAW_BISMUTH = ITEMS.register("raw_bismuth",
-            () -> new Item(new Item.Properties()));
-    public static final DeferredItem<Item> EGG_DRONE = ITEMS.register("drone_egg",
+    public static final DeferredItem<Item> SPAWN_DRONE = ITEMS.register("drone_egg",
             () -> new DeferredSpawnEggItem(ModEntities.DRONE, 0x31afaf, 0xffac00,
                     new Item.Properties()));
 
