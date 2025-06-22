@@ -26,7 +26,7 @@ public class WindCommand {
                                                     Vec3 direction = parseDirection(dir);
 
                                                     if (direction == null) {
-                                                        ctx.getSource().sendFailure(Component.literal("§cDireção inválida. Use norte, sul, leste, oeste, nordeste, noroeste, sudeste, sudoeste."));
+                                                        ctx.getSource().sendFailure(Component.literal("§cDireção inválida. Use north, south, east, west, northeast, northwest, southeast, southwest."));
                                                         return 0;
                                                     }
 
