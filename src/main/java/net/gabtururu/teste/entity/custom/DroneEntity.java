@@ -34,7 +34,8 @@ public class DroneEntity extends Mob {
 
     // Constantes de bateria
     private static final int MAX_BATTERY = 100;
-    private static final double LOW_BATTERY_THRESHOLD = 0.20; // 20%
+    private static final int LOW_BATTERY_PERCENT = 20;
+    private static final int CRITICAL_BATTERY_PERCENT = 10; // 20%
 
     private Vec3 targetPosition;
     private boolean moving = false;
@@ -44,6 +45,15 @@ public class DroneEntity extends Mob {
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
 
+    public void setBatteryCapacity(int capacity) {
+        int currentPercent = battery.getPercent();
+        this.battery = new DroneBattery(capacity);
+        this.battery.setPercent(currentPercent);
+    }
+
+    public void setBatteryLevel(int percent) {
+        this.battery.setPercent(percent);
+    }
 
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
@@ -75,8 +85,8 @@ public class DroneEntity extends Mob {
         }
 
         // Verifica nível de bateria e inicia retorno para recarga se necessário
-        double batteryPercentage = battery.getLevel() / (double) MAX_BATTERY;
-        if (!returningToRecharge && batteryPercentage < LOW_BATTERY_THRESHOLD) {
+        int batteryPercent = battery.getPercent();
+        if (!returningToRecharge && batteryPercent < LOW_BATTERY_PERCENT) {
             Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition());
             if (nearestRecharge.isPresent()) {
                 BlockPos pos = nearestRecharge.get();
@@ -183,7 +193,8 @@ public class DroneEntity extends Mob {
         boolean windFavorable = isWindFavorable();
         boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 15.0;
 
-        if (battery.getLevel() <= 10
+        int criticalLevel = (int) (battery.getCapacity() * (CRITICAL_BATTERY_PERCENT / 100.0));
+        if (battery.getLevel() <= criticalLevel
                 && !findNearestRedstoneBlock(blockPosition()).isPresent()
                 && !(nearTarget && windFavorable)) {
 
@@ -244,11 +255,11 @@ public class DroneEntity extends Mob {
         }
 
         // Envia mensagem ao jogador mais próximo sobre o nível da bateria
-        int batteryPercent = battery.getPercent();
-        if (batteryPercent <= 20 && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
+        batteryPercent = battery.getPercent();
+        if (batteryPercent <= LOW_BATTERY_PERCENT && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
             sendMessageToNearestPlayer(Component.literal("§cBateria baixa! " + batteryPercent + "% restante."));
             lastBatteryPercentWarned = batteryPercent;
-        } else if (batteryPercent > 20 && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
+        } else if (batteryPercent > LOW_BATTERY_PERCENT && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
             sendMessageToNearestPlayer(Component.literal("Drone bateria: " + batteryPercent + "%."));
             lastBatteryPercentWarned = batteryPercent;
         }
@@ -366,12 +377,13 @@ public class DroneEntity extends Mob {
 
     // Atualiza o nome customizado do drone com a barra de bateria
     private void updateBatteryName() {
-        int percent = (int) ((battery.getLevel() / (double) MAX_BATTERY) * 100);
-        String bar = getBatteryBar(percent);
-        this.setCustomNameVisible(true);
-        this.setCustomName(Component.literal("Bateria: " + bar + " " + percent + "%"));
-    }
+        double percent = ((double) battery.getLevel() / battery.getCapacity()) * 100;
+        percent = Math.min(percent, 100); // Garante que nunca ultrapasse 100%
 
+        String bar = getBatteryBar((int) percent);
+        this.setCustomNameVisible(true);
+        this.setCustomName(Component.literal("Bateria: " + bar + " " + (int) percent + "%"));
+    }
     @Override
     public boolean hurt(DamageSource source, float amount) {
         return false;

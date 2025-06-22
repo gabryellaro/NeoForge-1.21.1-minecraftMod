@@ -21,8 +21,17 @@ public class DroneBattery {
         return level;
     }
 
+    public int getCapacity() {
+        return maxLevel;
+    }
+
     public int getPercent() {
         return (int)((level / (double) maxLevel) * 100);
+    }
+
+    public void setPercent(int percent) {
+        percent = Math.max(0, Math.min(100, percent));
+        this.level = (int) ((percent / 100.0) * this.maxLevel);
     }
 
     public void recharge(int amount) {
