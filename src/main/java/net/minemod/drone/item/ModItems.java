@@ -11,7 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 public class ModItems {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(ModRegister.MOD_ID);
 
-    public static final DeferredItem<Item> SPAWN_DRONE = ITEMS.register("drone_egg",
+    public static final DeferredItem<Item> SPAWN_DRONE = ITEMS.register("drone_spawn",
             () -> new DeferredSpawnEggItem(ModEntities.DRONE, 0x31afaf, 0xffac00,
                     new Item.Properties()));
 
