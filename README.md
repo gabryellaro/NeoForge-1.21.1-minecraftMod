@@ -1,12 +1,16 @@
 
-Installation information
-=======
+# 🛸 Drone Mod (Minecraft)
 
-This template repository can be directly cloned to get you started with a new
-mod. Simply create a new repository cloned from this one, by following the
-instructions provided by [GitHub](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template).
+Um mod para Minecraft que adiciona drones inteligentes com movimentação autônoma.
 
-Once you have your clone, simply open the repository in the IDE of your choice. The usual recommendation for an IDE is either IntelliJ IDEA or Eclipse.
+## 📦 Instalação
+
+### 1. Clone o repositório
+
+```bash
+git clone 
+cd seu-repositorio
+``` 
 
 If at any point you are missing libraries in your IDE, or you've run into problems you can
 run `gradlew --refresh-dependencies` to refresh the local cache. `gradlew clean` to reset everything 
