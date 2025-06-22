@@ -1,6 +1,6 @@
 package net.minemod.drone.event;
 
-import net.minemod.drone.TutorialMod;
+import net.minemod.drone.ModRegister;
 import net.minemod.drone.entity.ModEntities;
 import net.minemod.drone.entity.client.DroneModel;
 import net.minemod.drone.entity.custom.DroneEntity;
@@ -9,7 +9,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent;
 
-@EventBusSubscriber(modid = TutorialMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = ModRegister.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
 public class ModEventBusEvents {
     @SubscribeEvent
     public static void registerLayers(EntityRenderersEvent.RegisterLayerDefinitions event) {

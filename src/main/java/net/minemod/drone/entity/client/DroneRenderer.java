@@ -1,7 +1,7 @@
 package net.minemod.drone.entity.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minemod.drone.TutorialMod;
+import net.minemod.drone.ModRegister;
 import net.minemod.drone.entity.custom.DroneEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -15,7 +15,7 @@ public class DroneRenderer extends MobRenderer<DroneEntity, DroneModel<DroneEnti
 
     @Override
     public ResourceLocation getTextureLocation(DroneEntity entity) {
-        return ResourceLocation.fromNamespaceAndPath(TutorialMod.MOD_ID, "textures/entity/drone/drone.png");
+        return ResourceLocation.fromNamespaceAndPath(ModRegister.MOD_ID, "textures/entity/drone/drone.png");
     }
 
     @Override

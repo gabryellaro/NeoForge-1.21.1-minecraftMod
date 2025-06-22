@@ -3,7 +3,7 @@ package net.minemod.drone.entity.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minemod.drone.TutorialMod;
+import net.minemod.drone.ModRegister;
 import net.minemod.drone.entity.custom.DroneEntity;
 import net.minecraft.client.model.HierarchicalModel;
 import net.minecraft.client.model.geom.ModelLayerLocation;
@@ -14,7 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 
 public class DroneModel<T extends DroneEntity> extends HierarchicalModel<T> {
     public static final ModelLayerLocation LAYER_LOCATION =
-            new ModelLayerLocation(ResourceLocation.fromNamespaceAndPath(TutorialMod.MOD_ID, "drone"), "main");
+            new ModelLayerLocation(ResourceLocation.fromNamespaceAndPath(ModRegister.MOD_ID, "drone"), "main");
     private final ModelPart Body;
     private final ModelPart helix;
     private final ModelPart root;
