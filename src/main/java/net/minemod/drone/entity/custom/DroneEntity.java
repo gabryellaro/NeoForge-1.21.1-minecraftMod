@@ -45,6 +45,15 @@ public class DroneEntity extends Mob {
 
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
+    private boolean smart = true;
+
+    public void setSmart(boolean value) {
+        this.smart = value;
+    }
+
+    public boolean isSmart() {
+        return smart;
+    }
 
     public void setBatteryCapacity(int capacity) {
         int currentPercent = battery.getPercent();
@@ -199,24 +208,55 @@ public class DroneEntity extends Mob {
     }
 
     private void handleCriticalBatteryBehavior() {
+        if (!shouldInitiateCriticalBatteryDescent()) return;
+
+        if (smart) {
+            if (!tryDivertFromWaterOnLowBattery()) {
+                handleCriticalBatteryFall();
+            }
+        } else {
+            handleCriticalBatteryFall();
+        }
+    }
+
+
+    private boolean shouldInitiateCriticalBatteryDescent() {
+        int criticalLevel = (int) (battery.getCapacity() * (CRITICAL_BATTERY_PERCENT / 100.0));
+
+        if (battery.getLevel() > criticalLevel || findNearestRedstoneBlock(blockPosition()).isPresent()) {
+            return false;
+        }
+
+        if (!smart) {
+            return true;
+        }
+
         boolean windFavorable = isWindFavorable();
         boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 15.0;
 
-        int criticalLevel = (int) (battery.getCapacity() * (CRITICAL_BATTERY_PERCENT / 100.0));
-        if (battery.getLevel() <= criticalLevel
-                && !findNearestRedstoneBlock(blockPosition()).isPresent()
-                && !(nearTarget && windFavorable)) {
+        return !(nearTarget && windFavorable);
+    }
 
-            boolean waterBelow = false;
-            for (int i = 1; i <= 6; i++) {
-                BlockPos pos = this.blockPosition().below(i);
-                if (level().getBlockState(pos).getFluidState().isSource()) {
-                    waterBelow = true;
-                    break;
-                }
-            }
 
-            if (waterBelow) {
+    private void handleCriticalBatteryFall() {
+        stopMovement();
+        BlockPos belowPos = this.blockPosition().below();
+        BlockState blockBelow = level().getBlockState(belowPos);
+        boolean isWater = blockBelow.getFluidState().isSource();
+
+        if (!this.onGround() && !isWater) {
+            Vec3 motion = this.getDeltaMovement();
+            this.setDeltaMovement(new Vec3(motion.x, Math.max(motion.y - 0.05, -0.15), motion.z));
+        } else {
+            this.setDeltaMovement(Vec3.ZERO);
+        }
+    }
+
+    private boolean tryDivertFromWaterOnLowBattery() {
+        for (int i = 1; i <= 6; i++) {
+            BlockPos pos = this.blockPosition().below(i);
+            if (level().getBlockState(pos).getFluidState().isSource()) {
+
                 BlockPos safePos = null;
                 outer:
                 for (int dx = -7; dx <= 7; dx++) {
@@ -238,22 +278,14 @@ public class DroneEntity extends Mob {
                 if (safePos != null) {
                     this.targetPosition = Vec3.atCenterOf(safePos);
                     this.moving = true;
-                    return;
+                    return true;
                 }
-            }
 
-            stopMovement();
-            BlockPos belowPos = this.blockPosition().below();
-            BlockState blockBelow = level().getBlockState(belowPos);
-            boolean isWater = blockBelow.getFluidState().isSource();
-
-            if (!this.onGround() && !isWater) {
-                Vec3 motion = this.getDeltaMovement();
-                this.setDeltaMovement(new Vec3(motion.x, Math.max(motion.y - 0.05, -0.15), motion.z));
-            } else {
-                this.setDeltaMovement(Vec3.ZERO);
+                break; // água detectada mas sem rota segura
             }
         }
+
+        return false; // sem água ou sem rota
     }
 
     private void updateBatteryNamePeriodically() {

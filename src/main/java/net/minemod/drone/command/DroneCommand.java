@@ -1,6 +1,7 @@
 package net.minemod.drone.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.minemod.drone.entity.custom.DroneEntity;
@@ -51,6 +52,18 @@ public class DroneCommand {
                                                         ctx.getSource().sendSuccess(() -> Component.literal("Nível da bateria definido para: " + level), false);
                                                     });
                                                 }))))
+                        .then(Commands.literal("smart")
+                                .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                        .executes(ctx -> {
+                                            boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+
+                                            return withNearestDrone(ctx.getSource(), drone -> {
+                                                drone.setSmart(enabled);
+                                                ctx.getSource().sendSuccess(
+                                                        () -> Component.literal("Comportamento inteligente do drone " + (enabled ? "ativado." : "desativado.")), false);
+                                            });
+                                        })))
+
         );
     }
 
