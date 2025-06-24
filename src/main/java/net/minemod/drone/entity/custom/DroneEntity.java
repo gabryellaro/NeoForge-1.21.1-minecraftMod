@@ -23,6 +23,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
 public class DroneEntity extends Mob {
@@ -45,6 +51,33 @@ public class DroneEntity extends Mob {
 
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
+
+    private void logToFile(String message) {
+        new File("logs").mkdirs();
+        String filePath = "logs/drone_log.txt";
+        try {
+            FileWriter writer = new FileWriter(filePath, true); // modo append
+            writer.write("[" + getFormattedTimestamp() + "] " + message + "\n");
+            writer.close();
+        } catch (IOException e) {
+            System.err.println("Erro ao gravar no log: " + e.getMessage());
+        }
+    }
+
+    private void logLandingAtDestination(String message) {
+        String logFileName = "drone_landing_log.txt";
+        try (FileWriter writer = new FileWriter(Paths.get(logFileName).toFile(), true)) {
+            String logEntry = "[" + java.time.LocalDateTime.now() + "] " + message + System.lineSeparator();
+            writer.write(logEntry);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getFormattedTimestamp() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        return LocalDateTime.now().format(formatter);
+    }
     private boolean smart = true;
 
     public void setSmart(boolean value) {
@@ -127,6 +160,7 @@ public class DroneEntity extends Mob {
             }
 
             battery.consume(level(), this, calculateWindFactor());
+            logToFile("Movimento | Posição: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
 
             Vec3 directionToTarget = targetPosition.subtract(position());
             double distance = directionToTarget.length();
@@ -135,6 +169,9 @@ public class DroneEntity extends Mob {
                 if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
                     rechargeBattery(MAX_BATTERY);
                     returningToRecharge = false;
+                    logLandingAtDestination("Drone pousou na estação para recarga em: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
+                } else {
+                    logLandingAtDestination("Drone pousou no destino em: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
                 }
                 stopMovement();
                 return;
@@ -240,6 +277,7 @@ public class DroneEntity extends Mob {
 
     private void handleCriticalBatteryFall() {
         stopMovement();
+        logToFile("Drone caindo por bateria crítica em: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
         BlockPos belowPos = this.blockPosition().below();
         BlockState blockBelow = level().getBlockState(belowPos);
         boolean isWater = blockBelow.getFluidState().isSource();
