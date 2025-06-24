@@ -1,5 +1,6 @@
 package net.minemod.drone.entity.custom;
 
+import net.minecraft.world.damagesource.DamageTypes;
 import net.minemod.drone.entity.util.DroneBattery;
 import net.minemod.drone.environment.WindSystem;
 import net.minecraft.core.BlockPos;
@@ -80,11 +81,21 @@ public class DroneEntity extends Mob {
         super.tick();
 
         if (this.level().isClientSide()) {
-            this.setupAnimationStates();
+            setupAnimationStates();
             return;
         }
 
-        // Verifica nível de bateria e inicia retorno para recarga se necessário
+        handleLowBatteryReturn();
+        handleMovementLogic();
+        handleHoveringWhenIdle();
+        rechargeIfOnRedstoneBlock();
+        handleCriticalBatteryBehavior();
+        updateBatteryNamePeriodically();
+        sendBatteryWarningMessages();
+    }
+
+
+    private void handleLowBatteryReturn() {
         int batteryPercent = battery.getPercent();
         if (!returningToRecharge && batteryPercent < LOW_BATTERY_PERCENT) {
             Optional<BlockPos> nearestRecharge = findNearestRedstoneBlock(blockPosition());
@@ -96,8 +107,9 @@ public class DroneEntity extends Mob {
                 moving = true;
             }
         }
+    }
 
-        // Lógica de movimentação do drone
+    private void handleMovementLogic() {
         if (moving && targetPosition != null) {
             if (battery.getLevel() <= 0) {
                 stopMovement();
@@ -107,11 +119,9 @@ public class DroneEntity extends Mob {
 
             battery.consume(level(), this, calculateWindFactor());
 
-            // Calcula direção e distância até o alvo
             Vec3 directionToTarget = targetPosition.subtract(position());
             double distance = directionToTarget.length();
 
-            // Se chegou ao destino, para o movimento e recarrega se necessário
             if (distance < 0.5) {
                 if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
                     rechargeBattery(MAX_BATTERY);
@@ -123,7 +133,6 @@ public class DroneEntity extends Mob {
 
             WindSystem.updateWind(level());
 
-            // Influência da água no movimento
             Vec3 waterInfluence = Vec3.ZERO;
             int waterCount = 0;
             for (int dx = -1; dx <= 1; dx++) {
@@ -140,7 +149,6 @@ public class DroneEntity extends Mob {
                 }
             }
 
-            // Calcula direção final considerando água
             Vec3 finalDirection;
             if (waterCount > 0) {
                 Vec3 avgWaterDir = waterInfluence.scale(1.0 / waterCount).normalize();
@@ -149,14 +157,12 @@ public class DroneEntity extends Mob {
                 finalDirection = directionToTarget.normalize();
             }
 
-            // Verifica obstáculos à frente
             Vec3 forward = finalDirection.scale(0.5);
             Vec3 ahead = position().add(forward);
             BlockPos checkPos = new BlockPos((int) Math.floor(ahead.x), (int) Math.floor(ahead.y), (int) Math.floor(ahead.z));
             BlockState blockAhead = level().getBlockState(checkPos);
             boolean isBlocked = !blockAhead.isAir();
 
-            // Calcula velocidade vertical
             double verticalDiff = targetPosition.y - getY();
             double verticalSpeed = Math.max(Math.min(verticalDiff * 0.05, 0.15), -0.15);
 
@@ -164,14 +170,16 @@ public class DroneEntity extends Mob {
                 verticalSpeed = 0.2;
             }
 
-            // Aplica movimento
             Vec3 horizontalDir = new Vec3(finalDirection.x, 0, finalDirection.z).normalize().scale(0.3);
             Vec3 velocity = new Vec3(horizontalDir.x, verticalSpeed, horizontalDir.z);
 
             setDeltaMovement(velocity);
             moveSelf();
-        } else {
-            // Mantém o drone flutuando a uma altura desejada
+        }
+    }
+
+    private void handleHoveringWhenIdle() {
+        if (!moving) {
             double desiredHeight = 1.0;
             double currentY = getY();
             BlockPos groundPos = blockPosition().below();
@@ -181,15 +189,16 @@ public class DroneEntity extends Mob {
             setDeltaMovement(new Vec3(0, verticalSpeed, 0));
             moveSelf();
         }
+    }
 
-        // Recarrega bateria se estiver sobre bloco de redstone
+    private void rechargeIfOnRedstoneBlock() {
         BlockPos under = blockPosition().below();
         if (level().getBlockState(under).is(Blocks.REDSTONE_BLOCK)) {
             rechargeBattery(2);
         }
+    }
 
-        // Se bateria está muito baixa e não há recarga próxima, para o movimento e simula queda
-        // Se bateria está muito baixa e não há recarga próxima, verificar se pode seguir até o destino
+    private void handleCriticalBatteryBehavior() {
         boolean windFavorable = isWindFavorable();
         boolean nearTarget = this.targetPosition != null && this.position().distanceTo(this.targetPosition) < 15.0;
 
@@ -208,7 +217,6 @@ public class DroneEntity extends Mob {
             }
 
             if (waterBelow) {
-                // Busca terreno seco para pousar
                 BlockPos safePos = null;
                 outer:
                 for (int dx = -7; dx <= 7; dx++) {
@@ -234,7 +242,6 @@ public class DroneEntity extends Mob {
                 }
             }
 
-            // Sem ponto seguro, simula queda
             stopMovement();
             BlockPos belowPos = this.blockPosition().below();
             BlockState blockBelow = level().getBlockState(belowPos);
@@ -247,15 +254,16 @@ public class DroneEntity extends Mob {
                 this.setDeltaMovement(Vec3.ZERO);
             }
         }
+    }
 
-
-        // Atualiza nome do drone com barra de bateria a cada segundo
+    private void updateBatteryNamePeriodically() {
         if (tickCount % 20 == 0) {
             updateBatteryName();
         }
+    }
 
-        // Envia mensagem ao jogador mais próximo sobre o nível da bateria
-        batteryPercent = battery.getPercent();
+    private void sendBatteryWarningMessages() {
+        int batteryPercent = battery.getPercent();
         if (batteryPercent <= LOW_BATTERY_PERCENT && batteryPercent % 10 == 0 && batteryPercent != lastBatteryPercentWarned) {
             sendMessageToNearestPlayer(Component.literal("§cBateria baixa! " + batteryPercent + "% restante."));
             lastBatteryPercentWarned = batteryPercent;
@@ -263,8 +271,8 @@ public class DroneEntity extends Mob {
             sendMessageToNearestPlayer(Component.literal("Drone bateria: " + batteryPercent + "%."));
             lastBatteryPercentWarned = batteryPercent;
         }
-
     }
+
 
     // Busca bloco de redstone mais próximo para recarga
     private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin) {
@@ -397,9 +405,13 @@ public class DroneEntity extends Mob {
         this.setCustomNameVisible(true);
         this.setCustomName(Component.literal("Bateria: " + bar + " " + (int) percent + "%"));
     }
+
     @Override
     public boolean hurt(DamageSource source, float amount) {
-        return false;
+        if (source.is(DamageTypes.FALL) || source.is(DamageTypes.FALLING_BLOCK)) {
+            return false;
+        }
+        return super.hurt(source, amount);
     }
 
     public static AttributeSupplier.Builder createAttributes() {
