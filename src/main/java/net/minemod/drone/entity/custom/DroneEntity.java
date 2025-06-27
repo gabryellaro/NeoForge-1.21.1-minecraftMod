@@ -1,6 +1,8 @@
 package net.minemod.drone.entity.custom;
 
 import net.minecraft.world.damagesource.DamageTypes;
+import net.minemod.drone.entity.behavior.Drone;
+import net.minemod.drone.entity.behavior.DroneAutomatoDecorator;
 import net.minemod.drone.entity.util.DroneBattery;
 import net.minemod.drone.environment.WindSystem;
 import net.minecraft.core.BlockPos;
@@ -23,16 +25,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 import javax.annotation.Nullable;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
-public class DroneEntity extends Mob {
+public class DroneEntity extends Mob implements Drone {
     private DroneBattery battery = new DroneBattery(MAX_BATTERY);
+    private DroneAutomatoDecorator automatoDecorator;
+
     public final AnimationState flyAnimationState = new AnimationState();
     private int flyAnimationTimeout = 0;
 
@@ -51,33 +49,6 @@ public class DroneEntity extends Mob {
 
     private boolean returningToRecharge = false;
     private BlockPos rechargeStation = null;
-
-    private void logToFile(String message) {
-        new File("logs").mkdirs();
-        String filePath = "logs/drone_log.txt";
-        try {
-            FileWriter writer = new FileWriter(filePath, true); // modo append
-            writer.write("[" + getFormattedTimestamp() + "] " + message + "\n");
-            writer.close();
-        } catch (IOException e) {
-            System.err.println("Erro ao gravar no log: " + e.getMessage());
-        }
-    }
-
-    private void logLandingAtDestination(String message) {
-        String logFileName = "drone_landing_log.txt";
-        try (FileWriter writer = new FileWriter(Paths.get(logFileName).toFile(), true)) {
-            String logEntry = "[" + java.time.LocalDateTime.now() + "] " + message + System.lineSeparator();
-            writer.write(logEntry);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private String getFormattedTimestamp() {
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        return LocalDateTime.now().format(formatter);
-    }
     private boolean smart = true;
 
     public void setSmart(boolean value) {
@@ -88,9 +59,30 @@ public class DroneEntity extends Mob {
         return smart;
     }
 
+    @Override
+    public Vec3 getTargetPosition() {
+        return this.targetPosition;
+    }
+
+    @Override
+    public void setTargetPosition(Vec3 target) {
+        this.targetPosition = target;
+    }
+
+    @Override
+    public boolean isMoving() {
+        return this.moving;
+    }
+
+    @Override
+    public void setMoving(boolean moving) {
+        this.moving = moving;
+    }
+
     public void setBatteryCapacity(int capacity) {
         int currentPercent = battery.getPercent();
         this.battery = new DroneBattery(capacity);
+        this.automatoDecorator = new DroneAutomatoDecorator(this, this.battery);
         this.battery.setPercent(currentPercent);
     }
 
@@ -101,6 +93,7 @@ public class DroneEntity extends Mob {
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
         this.setNoGravity(true);
+        this.automatoDecorator = new DroneAutomatoDecorator(this, this.battery);
     }
 
     @Override
@@ -117,7 +110,6 @@ public class DroneEntity extends Mob {
         }
     }
 
-    // Método principal chamado a cada tick do jogo
     @Override
     public void tick() {
         super.tick();
@@ -125,6 +117,12 @@ public class DroneEntity extends Mob {
         if (this.level().isClientSide()) {
             setupAnimationStates();
             return;
+        }
+
+        if (this.smart && automatoDecorator != null) {
+            automatoDecorator.handleCriticalBatteryBehavior();
+        } else {
+            handleCriticalBatteryBehavior(); // fallback para modo não inteligente
         }
 
         handleLowBatteryReturn();
@@ -160,7 +158,6 @@ public class DroneEntity extends Mob {
             }
 
             battery.consume(level(), this, calculateWindFactor());
-            logToFile("Movimento | Posição: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
 
             Vec3 directionToTarget = targetPosition.subtract(position());
             double distance = directionToTarget.length();
@@ -169,9 +166,7 @@ public class DroneEntity extends Mob {
                 if (returningToRecharge && rechargeStation != null && blockPosition().closerThan(rechargeStation, 2)) {
                     rechargeBattery(MAX_BATTERY);
                     returningToRecharge = false;
-                    logLandingAtDestination("Drone pousou na estação para recarga em: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
                 } else {
-                    logLandingAtDestination("Drone pousou no destino em: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
                 }
                 stopMovement();
                 return;
@@ -247,15 +242,8 @@ public class DroneEntity extends Mob {
     private void handleCriticalBatteryBehavior() {
         if (!shouldInitiateCriticalBatteryDescent()) return;
 
-        if (smart) {
-            if (!tryDivertFromWaterOnLowBattery()) {
-                handleCriticalBatteryFall();
-            }
-        } else {
-            handleCriticalBatteryFall();
-        }
+        handleCriticalBatteryFall();
     }
-
 
     private boolean shouldInitiateCriticalBatteryDescent() {
         int criticalLevel = (int) (battery.getCapacity() * (CRITICAL_BATTERY_PERCENT / 100.0));
@@ -274,10 +262,8 @@ public class DroneEntity extends Mob {
         return !(nearTarget && windFavorable);
     }
 
-
     private void handleCriticalBatteryFall() {
         stopMovement();
-        logToFile("Drone caindo por bateria crítica em: " + blockPosition() + " | Bateria: " + battery.getPercent() + "%");
         BlockPos belowPos = this.blockPosition().below();
         BlockState blockBelow = level().getBlockState(belowPos);
         boolean isWater = blockBelow.getFluidState().isSource();
@@ -288,42 +274,6 @@ public class DroneEntity extends Mob {
         } else {
             this.setDeltaMovement(Vec3.ZERO);
         }
-    }
-
-    private boolean tryDivertFromWaterOnLowBattery() {
-        for (int i = 1; i <= 6; i++) {
-            BlockPos pos = this.blockPosition().below(i);
-            if (level().getBlockState(pos).getFluidState().isSource()) {
-
-                BlockPos safePos = null;
-                outer:
-                for (int dx = -7; dx <= 7; dx++) {
-                    for (int dz = -7; dz <= 7; dz++) {
-                        for (int dy = 0; dy <= 4; dy++) {
-                            BlockPos check = this.blockPosition().offset(dx, -1 + dy, dz);
-                            BlockState state = level().getBlockState(check);
-                            boolean isSolid = state.isSolid();
-                            boolean notWater = !state.getFluidState().isSource();
-
-                            if (isSolid && notWater) {
-                                safePos = check.above();
-                                break outer;
-                            }
-                        }
-                    }
-                }
-
-                if (safePos != null) {
-                    this.targetPosition = Vec3.atCenterOf(safePos);
-                    this.moving = true;
-                    return true;
-                }
-
-                break; // água detectada mas sem rota segura
-            }
-        }
-
-        return false; // sem água ou sem rota
     }
 
     private void updateBatteryNamePeriodically() {
@@ -345,7 +295,7 @@ public class DroneEntity extends Mob {
 
 
     // Busca bloco de redstone mais próximo para recarga
-    private Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin) {
+    public Optional<BlockPos> findNearestRedstoneBlock(BlockPos origin) {
         BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
         for (int dx = -10; dx <= 10; dx++) {
             for (int dy = -10; dy <= 10; dy++) {
@@ -393,7 +343,7 @@ public class DroneEntity extends Mob {
         loadedChunkPos = pos;
     }
 
-    private void stopMovement() {
+    public void stopMovement() {
         setDeltaMovement(Vec3.ZERO);
         moving = false;
         targetPosition = null;
@@ -456,7 +406,7 @@ public class DroneEntity extends Mob {
         return Math.max(0.5, Math.min(1.5, adjustment));
     }
 
-    private boolean isWindFavorable() {
+    public boolean isWindFavorable() {
         if (targetPosition == null) return false;
 
         Vec3 movementDir = targetPosition.subtract(position()).normalize();
