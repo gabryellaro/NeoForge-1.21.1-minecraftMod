@@ -26,7 +26,10 @@ cd seu-repositorio
 Para compilar o projeto, utilize a opção de build no IntelliJ e aguarde a conclusão do processo.  
 Além disso, certifique-se de abrir a aba do Gradle (geralmente à direita), clicar com o botão direito no projeto e selecionar **"Download Sources"** para garantir que todas as dependências estejam corretamente resolvidas. 
 
-> Após a conclusão bem-sucedida do build, você pode seguir para os próximos passos.
+Após a conclusão bem-sucedida do build, clique em **"Current File"** e selecione **"Client"**.  
+Em seguida, clique no botão à direita que contém **Run Client** e aguarde o jogo abrir.
+
+> Com o jogo iniciado corretamente, você pode prosseguir para os próximos passos.
 
 ## 📦 Utilizando o Drone
 
@@ -34,7 +37,19 @@ Para testar o drone no jogo, siga as instruções abaixo:
 
 ### 1. Criando um mundo
 
-Abra o Minecraft e crie um novo mundo no modo **Criativo**. Esse modo permite que você tenha acesso livre aos itens e blocos, o que facilita para testar o drone.
+Crie um novo mundo no modo **Criativo** com cheats ativados e tipo de terreno **flat** (plano). Esse modo permite que você tenha acesso livre aos itens e blocos, além de poder usar comandos para facilitar os testes com o drone.
+
+Siga estes passos para configurar o mundo:
+
+- Na tela inicial do Minecraft, clique em **Singleplayer**.
+- Clique em **Create New World**.
+- Defina o nome do mundo, por exemplo, `DroneTestWorld`.
+- Escolha o **Modo Criativo**.
+- Ative a opção **Allow Cheats: ON**.
+- Clique em **More World Options...**.
+- No campo **World Type**, selecione **Superflat**.
+- (Opcional) Clique em **Customize** para ajustar o terreno plano, caso deseje.
+- Clique em **Create New World** para iniciar o mundo.
 
 ### 2. Pegando o drone
 
