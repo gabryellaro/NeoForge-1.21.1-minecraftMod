@@ -72,6 +72,9 @@ Com o drone já no mundo, você pode controlar seu comportamento usando comandos
 - `/drone set batteryCapacity <valor>`  
   Define a capacidade máxima de bateria (padrão é 100).
 
+- `/drone set smart <true/false>`  
+  Define qual comportamento o drone terá, autônomo cauteloso ou básico.
+
 #### 🌬️ Sistema de vento
 
 - `/wind set <direction> <strength>`  
