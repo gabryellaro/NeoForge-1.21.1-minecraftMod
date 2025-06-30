@@ -82,14 +82,3 @@ Com o drone já no mundo, você pode controlar seu comportamento usando comandos
 
 - `/wind random`  
   Gera uma direção e força de vento aleatórias.
-
-
-
-
-
-
-
-Additional Resources: 
-==========
-Community Documentation: https://docs.neoforged.net/  
-NeoForged Discord: https://discord.neoforged.net/
