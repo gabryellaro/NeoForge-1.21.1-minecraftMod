@@ -5,13 +5,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 import net.minemod.drone.entity.util.DroneBattery;
 
-public class DroneAutomatoDecorator implements Drone {
+public class DroneAutomataDecorator implements Drone {
     private static final int CRITICAL_BATTERY_PERCENT = 10;
 
     private final Drone drone;
     private final DroneBattery battery;
 
-    public DroneAutomatoDecorator(Drone drone, DroneBattery battery) {
+    public DroneAutomataDecorator(Drone drone, DroneBattery battery) {
         this.drone = drone;
         this.battery = battery;
         this.drone.setSmart(true);

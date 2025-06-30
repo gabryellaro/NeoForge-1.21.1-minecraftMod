@@ -2,7 +2,7 @@ package net.minemod.drone.entity.custom;
 
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minemod.drone.entity.behavior.Drone;
-import net.minemod.drone.entity.behavior.DroneAutomatoDecorator;
+import net.minemod.drone.entity.behavior.DroneAutomataDecorator;
 import net.minemod.drone.entity.util.DroneBattery;
 import net.minemod.drone.environment.WindSystem;
 import net.minecraft.core.BlockPos;
@@ -29,7 +29,7 @@ import java.util.Optional;
 
 public class DroneEntity extends Mob implements Drone {
     private DroneBattery battery = new DroneBattery(MAX_BATTERY);
-    private DroneAutomatoDecorator automatoDecorator;
+    private DroneAutomataDecorator automatoDecorator;
 
     public final AnimationState flyAnimationState = new AnimationState();
     private int flyAnimationTimeout = 0;
@@ -82,7 +82,7 @@ public class DroneEntity extends Mob implements Drone {
     public void setBatteryCapacity(int capacity) {
         int currentPercent = battery.getPercent();
         this.battery = new DroneBattery(capacity);
-        this.automatoDecorator = new DroneAutomatoDecorator(this, this.battery);
+        this.automatoDecorator = new DroneAutomataDecorator(this, this.battery);
         this.battery.setPercent(currentPercent);
     }
 
@@ -93,7 +93,7 @@ public class DroneEntity extends Mob implements Drone {
     public DroneEntity(EntityType<? extends DroneEntity> type, Level level) {
         super(type, level);
         this.setNoGravity(true);
-        this.automatoDecorator = new DroneAutomatoDecorator(this, this.battery);
+        this.automatoDecorator = new DroneAutomataDecorator(this, this.battery);
     }
 
     @Override
