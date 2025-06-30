@@ -82,3 +82,15 @@ Com o drone já no mundo, você pode controlar seu comportamento usando comandos
 
 - `/wind random`  
   Gera uma direção e força de vento aleatórias.
+
+### 🌐 Importando o Mundo de Teste
+
+Utilize o arquivo **MapaTeste.zip**, disponível neste repositório, para carregar o ambiente com configurações de automatização já preparadas.
+
+Após executar o ambiente pela primeira vez, siga os passos abaixo:
+
+1. Navegue até o diretório `run/saves` no seu sistema.
+2. Extraia o conteúdo de **MapaTeste.zip** dentro dessa pasta.
+3. Reinicie o Minecraft (se estiver aberto).
+
+O mundo estará disponível na lista de mundos com o nome correspondente, pronto para uso nos testes com o drone.
